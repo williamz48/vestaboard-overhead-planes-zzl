@@ -61,16 +61,74 @@ ICAO_TO_IATA: dict[str, str] = {
 _CALLSIGN_RE = re.compile(r"^([A-Z]{3})0*(\d[0-9A-Z]*)$")
 
 
-def iata_flight_number(callsign: str | None) -> str:
-    """Best-effort conversion of an ICAO callsign to an IATA flight number.
+# Regional airlines and brands that fly under a mainline airline's flight
+# numbers. One mainline: always shown as that airline (QantasLink QLK -> QF).
+# Several (SkyWest flies for United, Delta, American and Alaska): FlightAware's
+# flight number or codeshares decide which one.
+REGIONAL_MAINLINE: dict[str, tuple[str, ...]] = {
+    # United States
+    "ENY": ("AAL",), "PDT": ("AAL",), "JIA": ("AAL",),  # American Eagle
+    "EDV": ("DAL",),  # Delta Connection
+    "ASH": ("UAL",), "GJS": ("UAL",), "UCA": ("UAL",),  # United Express
+    "QXE": ("ASA",),  # Horizon (Alaska)
+    "SKW": ("UAL", "DAL", "AAL", "ASA"), "RPA": ("UAL", "DAL", "AAL"), "AWI": ("AAL", "UAL"),
+    # Canada / Mexico / Latin America
+    "JZA": ("ACA",), "ROU": ("ACA",),  # Air Canada Express (Jazz), Air Canada Rouge
+    "WEN": ("WJA",),  # WestJet Encore
+    "SLI": ("AMX",),  # Aeromexico Connect
+    "TAM": ("LAN",), "LPE": ("LAN",), "LNE": ("LAN",), "ARE": ("LAN",),  # LATAM Brasil/Peru/Ecuador/Colombia
+    "LRC": ("AVA",), "TAI": ("AVA",),  # Avianca Costa Rica / El Salvador
+    "RPB": ("CMP",),  # Copa Colombia
+    # Europe
+    "CFE": ("BAW",), "SHT": ("BAW",),  # BA CityFlyer, BA Shuttle
+    "CLH": ("DLH",),  # Lufthansa CityLine
+    "KLC": ("KLM",),  # KLM Cityhopper
+    "HOP": ("AFR",),  # Air France HOP
+    "ANE": ("IBE",),  # Air Nostrum (Iberia Regional)
+    "SZS": ("SAS",),  # SAS Link
+    # Asia / Pacific
+    "QLK": ("QFA",), "EAQ": ("QFA",), "SSQ": ("QFA",), "NWK": ("QFA",),  # QantasLink
+    "RLK": ("ANZ",), "NZM": ("ANZ",),  # Air New Zealand Link
+    "JLJ": ("JAL",),  # J-Air
+    "AKX": ("ANA",),  # ANA Wings
+    "CCD": ("CCA",), "CNM": ("CCA",), "CAO": ("CCA",),  # Dalian, Inner Mongolia, Air China Cargo
+}
 
-    ``UAL0123`` -> ``UA123``. Unknown airlines and registrations (``N123AB``)
+
+def mainline_codes(icao: str | None) -> tuple[str, ...]:
+    """IATA codes of the mainline airline(s) a regional ICAO code flies for."""
+    return tuple(ICAO_TO_IATA[m] for m in REGIONAL_MAINLINE.get(icao or "", ()))
+
+
+def iata_flight_number(
+    callsign: str | None,
+    ident_iata: str | None = None,
+    codeshares_iata: list[str] | tuple[str, ...] = (),
+) -> str:
+    """The IATA flight number to show, merging regional brands into their mainline.
+
+    ``UAL0123`` -> ``UA123``; QantasLink ``QLK1567`` -> ``QF1567``. ``ident_iata``
+    and ``codeshares_iata`` come from FlightAware when available and are preferred
+    when they name the mainline. Unknown airlines and registrations (``N123AB``)
     are returned unchanged.
     """
     cs = (callsign or "").strip().upper()
     match = _CALLSIGN_RE.match(cs)
-    if match and match.group(1) in ICAO_TO_IATA:
-        return ICAO_TO_IATA[match.group(1)] + match.group(2)
+    icao, number = (match.group(1), match.group(2)) if match else (None, None)
+    ident = (ident_iata or "").strip().upper()
+    mainline = mainline_codes(icao)
+    if mainline:
+        for candidate in (ident, *(c.strip().upper() for c in codeshares_iata or ())):
+            if candidate[:2] in mainline and candidate[2:3].isdigit():
+                return candidate
+        if len(mainline) == 1:
+            if ident and ident[2:3].isdigit():
+                return mainline[0] + ident[2:]  # FlightAware's own number, e.g. MQ3456 -> AA3456
+            return mainline[0] + number
+    if ident:
+        return ident
+    if icao in ICAO_TO_IATA:
+        return ICAO_TO_IATA[icao] + number
     return cs
 
 
@@ -86,21 +144,19 @@ COLOR_CODES = {
 }
 
 AIRLINE_COLORS: dict[str, str] = {
-    # United States (regionals flying a single brand take that brand's color)
-    "AAL": "BLUE", "ENY": "BLUE", "PDT": "BLUE", "JIA": "BLUE",
-    "UAL": "BLUE", "GJS": "BLUE", "UCA": "BLUE", "ASH": "BLUE", "AWI": "BLUE",
-    "DAL": "RED", "EDV": "RED",
-    "SWA": "BLUE", "ASA": "BLUE", "QXE": "BLUE", "JBU": "BLUE", "MXY": "BLUE",
+    # United States (regionals take their mainline's color, see REGIONAL_MAINLINE)
+    "AAL": "BLUE", "UAL": "BLUE", "DAL": "RED",
+    "SWA": "BLUE", "ASA": "BLUE", "JBU": "BLUE", "MXY": "BLUE",
     "NKS": "YELLOW", "FFT": "GREEN", "HAL": "VIOLET", "AAY": "ORANGE",
     "SCX": "ORANGE", "VXP": "VIOLET", "FDX": "VIOLET", "UPS": "YELLOW",
     "CKS": "RED", "DHK": "YELLOW", "BCS": "YELLOW",
     # Canada / Mexico / Latin America
-    "ACA": "RED", "JZA": "RED", "ROU": "RED", "WJA": "BLUE", "WEN": "BLUE",
+    "ACA": "RED", "WJA": "BLUE",
     "POE": "BLUE", "FLE": "VIOLET", "TSC": "BLUE", "AMX": "BLUE",
-    "VOI": "VIOLET", "VIV": "GREEN", "CMP": "BLUE", "AVA": "RED", "LRC": "RED",
-    "LAN": "RED", "TAM": "RED", "GLO": "ORANGE", "AZU": "BLUE", "ARG": "BLUE",
+    "VOI": "VIOLET", "VIV": "GREEN", "CMP": "BLUE", "AVA": "RED",
+    "LAN": "RED", "GLO": "ORANGE", "AZU": "BLUE", "ARG": "BLUE",
     # Europe
-    "BAW": "BLUE", "SHT": "BLUE", "VIR": "RED", "DLH": "YELLOW", "AFR": "BLUE",
+    "BAW": "BLUE", "VIR": "RED", "DLH": "YELLOW", "AFR": "BLUE",
     "KLM": "BLUE", "IBE": "RED", "ITY": "BLUE", "SAS": "BLUE", "FIN": "BLUE",
     "EIN": "GREEN", "RYR": "BLUE", "EZY": "ORANGE", "EJU": "ORANGE",
     "WZZ": "VIOLET", "SWR": "RED", "AUA": "RED", "TAP": "GREEN", "ICE": "BLUE",
@@ -117,12 +173,16 @@ AIRLINE_COLORS: dict[str, str] = {
     "IGO": "BLUE", "PAL": "BLUE", "CEB": "YELLOW", "HVN": "BLUE", "THA": "VIOLET",
     "MAS": "RED", "GIA": "BLUE", "AXM": "RED", "SCO": "YELLOW", "VJC": "RED",
     # China / Hong Kong / Macau / Taiwan
-    "CCA": "RED", "CCD": "RED", "CNM": "RED", "CES": "BLUE", "CSN": "BLUE",
+    "CCA": "RED", "CES": "BLUE", "CSN": "BLUE",
     "CHH": "RED", "CSZ": "RED", "CSC": "RED", "CXA": "BLUE", "CSH": "RED",
     "CQH": "GREEN", "DKH": "RED", "CHB": "ORANGE", "CPA": "GREEN",
     "HKE": "VIOLET", "CRK": "RED", "AMU": "RED", "CAL": "VIOLET",
     "EVA": "GREEN", "SJX": "YELLOW", "TTW": "ORANGE",
 }
+
+_IATA_COLORS: dict[str, str] = {}
+for _icao, _color in AIRLINE_COLORS.items():
+    _IATA_COLORS.setdefault(ICAO_TO_IATA[_icao], _color)
 
 
 def airline_color(
@@ -137,11 +197,11 @@ def airline_color(
     """
     match = _CALLSIGN_RE.match((callsign or "").strip().upper())
     icao = match.group(1) if match else None
-    iata = ICAO_TO_IATA.get(icao or "")
-    if not iata and flight_number and len(flight_number) > 2 and flight_number[2:3].isdigit():
-        iata = flight_number[:2].upper()
+    number = (flight_number or "").strip().upper()
+    # The displayed airline: a regional's mainline (via its flight number), or the operator.
+    iata = number[:2] if len(number) > 2 and number[2:3].isdigit() else ICAO_TO_IATA.get(icao or "")
     overrides = overrides or {}
     for key in (icao, iata):
         if key and key in overrides:
             return COLOR_CODES.get(overrides[key].strip().upper())
-    return COLOR_CODES.get(AIRLINE_COLORS.get(icao or "", ""))
+    return COLOR_CODES.get(_IATA_COLORS.get(iata or "") or AIRLINE_COLORS.get(icao or "", ""))

@@ -30,6 +30,7 @@ class FlightAwareError(Exception):
 class FlightInfo:
     ident: str
     ident_iata: str | None
+    codeshares_iata: list[str]
     operator: str | None
     operator_iata: str | None
     flight_number: str | None
@@ -93,6 +94,7 @@ def to_flight_info(flight: dict) -> FlightInfo:
     return FlightInfo(
         ident=flight.get("ident") or "",
         ident_iata=flight.get("ident_iata"),
+        codeshares_iata=list(flight.get("codeshares_iata") or []),
         operator=flight.get("operator"),
         operator_iata=flight.get("operator_iata"),
         flight_number=flight.get("flight_number"),
