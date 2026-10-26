@@ -186,7 +186,14 @@
           </select>
         </label>
         <label data-idle="clock" class="check"><input type="checkbox" name="clock_show_weather"> Include weather (Open-Meteo, no key needed)</label>
-        <label class="check span-2"><input type="checkbox" name="show_manufacturer"> Show the manufacturer when it fits (AIRBUS A350-900, otherwise A350-900)</label>
+        <label>Aircraft row
+          <select name="aircraft_display">
+            <option value="model">Model (A350-900)</option>
+            <option value="icao_registration">ICAO type + registration (A359 N501DN)</option>
+            <option value="model_registration">Model + registration (A350-900 N501DN)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" name="show_manufacturer"> Show the manufacturer when it fits (AIRBUS A350-900)</label>
         <label class="span-2">Aircraft name overrides
           <textarea name="aircraft_overrides" rows="4" placeholder="A21N=A321XLR&#10;N123AB=A321XLR"></textarea>
           <span class="hint">One per line: <code>ICAO_TYPE=NAME</code> or <code>REGISTRATION=NAME</code>. Registration matches win.</span>

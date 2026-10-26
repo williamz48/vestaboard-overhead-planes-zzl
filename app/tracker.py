@@ -121,22 +121,47 @@ def route_line(origin: str | None, destination: str | None, width: int) -> str:
     return text if len(text) <= width else vestaboard.fit(f"{o}-{d}", width)
 
 
+def aircraft_line(
+    flight: TrackedFlight, width: int, mode: str = "model", manufacturer: bool = True
+) -> str:
+    """The aircraft row.
+
+    ``model``: "AIRBUS A350-900" when it fits (with ``manufacturer``), else "A350-900".
+    ``icao_registration``: ICAO type designator and registration, "A359 N501DN".
+    ``model_registration``: the model plus registration, "A350-900 N501DN", using
+    the ICAO designator instead of the model when that's what it takes to fit.
+    Missing parts are left out.
+    """
+    models = [flight.aircraft_long] if manufacturer and flight.aircraft_long else []
+    models.append(flight.aircraft)
+    icao, reg = flight.aircraft_type or "", flight.registration or ""
+    join = lambda *parts: " ".join(p for p in parts if p).upper()  # noqa: E731
+    if mode == "icao_registration":
+        candidates = [join(icao, reg)]
+    elif mode == "model_registration":
+        candidates = [join(m, reg) for m in models] + [join(icao, reg)]
+    else:
+        candidates = models
+    candidates = [c for c in candidates if c]
+    for text in candidates:
+        if len(text) <= width:
+            return text
+    return vestaboard.fit(candidates[-1], width) if candidates else ""
+
+
 def board_lines(
     flight: TrackedFlight,
     width: int,
     colors: bool = True,
     align: str = "center",
     manufacturer: bool = True,
+    aircraft_mode: str = "model",
 ) -> list[str]:
-    """Line 1: flight number, line 2: ORIGIN - DESTINATION, line 3: aircraft model.
+    """Line 1: flight number, line 2: ORIGIN - DESTINATION, line 3: aircraft.
 
     With ``colors``, the flight number row gets the airline's color at both ends.
-    With ``manufacturer``, the model includes its maker ("AIRBUS A350-900") when
-    that fits on the row; otherwise the compact form ("A350-1000") is used.
+    See :func:`aircraft_line` for ``manufacturer`` and ``aircraft_mode``.
     """
-    model = flight.aircraft
-    if manufacturer and flight.aircraft_long and len(flight.aircraft_long) <= width:
-        model = flight.aircraft_long
     number = flight.flight or flight.callsign
     first = (
         vestaboard.with_edge_tiles(number, flight.color, width, align)
@@ -146,7 +171,7 @@ def board_lines(
     return [
         first,
         route_line(flight.origin, flight.destination, width),
-        vestaboard.fit(model, width),
+        aircraft_line(flight, width, aircraft_mode, manufacturer),
     ]
 
 
@@ -332,7 +357,9 @@ class Tracker:
                 aircraft.parse_overrides(s.airline_color_overrides),
             )
 
-        lines = board_lines(target, cols, s.airline_colors, s.align, s.show_manufacturer)
+        lines = board_lines(
+            target, cols, s.airline_colors, s.align, s.show_manufacturer, s.aircraft_display
+        )
         await self.show(lines, s, source=target.icao24)
 
     async def show_clock(self, s: Settings) -> None:

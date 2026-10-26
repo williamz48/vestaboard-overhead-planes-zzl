@@ -135,6 +135,7 @@ sends when the text changes and never sends more often than that.
 | Idle message | One row per line. `{63}`–`{70}` insert color tiles (red, orange, yellow, green, blue, violet, white, black) |
 | Min/max altitude | Ignore aircraft outside this altitude band |
 | Airline flights only | Skip private aircraft whose callsign is a tail number |
+| Aircraft row | **Model** (`A350-900`), **ICAO type + registration** (`A359 N501DN`), or **Model + registration** (`A350-900 N501DN`, falling back to the ICAO type when the model is too long to fit) |
 | Show the manufacturer | Prefix the model with its maker when the row has room (`AIRBUS A350-900`); otherwise use the compact name |
 | Aircraft name overrides | Rename aircraft: `ICAO_TYPE=NAME` or `REGISTRATION=NAME`, one per line |
 | Airline color tiles | Put the airline's color in the first and last tile of the flight number row |
@@ -227,6 +228,17 @@ on the row (15 tiles on a Note, 22 on a Flagship):
 | `B789` | `BOEING 787-9` | `BOEING 787-9` |
 | `B38M` | `B737-8 MAX` | `BOEING 737-8 MAX` |
 | `DH8D` | `DHC-8-400` | `DE HAVILLAND DHC-8-400` |
+
+The **Aircraft row** setting can show the registration (tail number) from
+FlightAware instead of, or next to, the model:
+
+| Setting | Note | Flagship |
+|---|---|---|
+| ICAO type + registration | `A359 N501DN` | `A359 N501DN` |
+| Model + registration (A350-900) | `A350-900 N501DN` | `AIRBUS A350-900 N501DN` |
+| Model + registration (737-8 MAX) | `B38M VH-8IA` | `B737-8 MAX VH-8IA` |
+
+If FlightAware has no registration for a flight, the row shows the type alone.
 
 Boeing, Beechcraft and Cessna drop their one-letter prefix after the maker name
 (`BOEING 787-9`, not `BOEING B787-9`). Overrides keep the maker from the type
