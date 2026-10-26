@@ -1,5 +1,5 @@
 from app import aircraft, airlines, vestaboard
-from app.tracker import TrackedFlight, board_lines, route_line
+from app.tracker import TrackedFlight, aircraft_line, board_lines, route_line
 
 
 def test_all_aircraft_names_fit_on_a_note():
@@ -167,3 +167,26 @@ def test_regionals_take_mainline_color():
     assert airlines.airline_color("SKW3901", "DL3901") == 63  # Delta red
     assert airlines.airline_color("SKW5432", "OO5432") is None  # brand unknown
     assert airlines.airline_color("QLK1567", "QF1567", aircraft.parse_overrides("QLK=GREEN")) == 66
+
+
+def test_aircraft_row_modes():
+    a350 = _flight(aircraft="A350-900", aircraft_long="AIRBUS A350-900", aircraft_type="A359",
+                   registration="N501DN")
+    assert aircraft_line(a350, 15) == "AIRBUS A350-900"
+    assert aircraft_line(a350, 15, "icao_registration") == "A359 N501DN"
+    assert aircraft_line(a350, 15, "model_registration") == "A350-900 N501DN"
+    assert aircraft_line(a350, 22, "model_registration") == "AIRBUS A350-900 N501DN"
+    assert aircraft_line(a350, 22, "model_registration", manufacturer=False) == "A350-900 N501DN"
+
+    max8 = _flight(aircraft="B737-8 MAX", aircraft_long="BOEING 737-8 MAX", aircraft_type="B38M",
+                   registration="VH-8IA")
+    # "B737-8 MAX VH-8IA" is 17 characters, so the ICAO designator stands in for the model
+    assert aircraft_line(max8, 15, "model_registration") == "B38M VH-8IA"
+    assert aircraft_line(max8, 22, "model_registration") == "B737-8 MAX VH-8IA"
+
+    no_reg = _flight(aircraft="E175", aircraft_type="E75L")
+    assert aircraft_line(no_reg, 15, "icao_registration") == "E75L"
+    assert aircraft_line(no_reg, 15, "model_registration") == "E175"
+    assert aircraft_line(_flight(), 15, "icao_registration") == ""
+
+    assert board_lines(a350, 15, aircraft_mode="icao_registration")[2] == "A359 N501DN"

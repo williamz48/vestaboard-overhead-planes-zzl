@@ -289,7 +289,7 @@ function renderCurrent(status) {
   el.innerHTML = `<dl>
     <dt>Flight</dt><dd>${esc(f.flight)} <span class="muted">(${esc(f.callsign)}${f.airline ? " · " + esc(f.airline) : ""})</span></dd>
     <dt>Route</dt><dd>${esc(f.origin_name || f.origin || "?")} → ${esc(f.destination_name || f.destination || "?")}</dd>
-    <dt>Aircraft</dt><dd>${esc(f.aircraft_long || f.aircraft || "unknown")}${f.registration ? ` <span class="muted">${esc(f.registration)}</span>` : ""}</dd>
+    <dt>Aircraft</dt><dd>${esc(f.aircraft_long || f.aircraft || "unknown")}${[f.aircraft_type, f.registration].filter(Boolean).length ? ` <span class="muted">${esc([f.aircraft_type, f.registration].filter(Boolean).join(" · "))}</span>` : ""}</dd>
     <dt>Position</dt><dd>${f.distance} ${unit} ${esc(f.bearing)} · ${f.altitude_ft != null ? f.altitude_ft.toLocaleString() + " ft" : "alt ?"} · ${f.speed_kt ?? "?"} kt</dd>
   </dl>`;
 }
@@ -309,7 +309,7 @@ function renderNearby(status) {
         <td>${f.color ? `<span class="swatch c${f.color}"></span>` : ""}<b>${esc(f.flight || f.callsign)}</b></td>
         <td>${esc(f.callsign)}</td>
         <td>${route}</td>
-        <td>${f.aircraft ? esc(f.aircraft_long || f.aircraft) : '<span class="sub">—</span>'}</td>
+        <td>${f.aircraft ? esc(f.aircraft_long || f.aircraft) : '<span class="sub">—</span>'}${[f.aircraft_type, f.registration].filter(Boolean).length ? ` <span class="sub">${esc([f.aircraft_type, f.registration].filter(Boolean).join(" · "))}</span>` : ""}</td>
         <td class="num">${f.on_ground ? "ground" : f.altitude_ft != null ? f.altitude_ft.toLocaleString() + " ft" : "—"}</td>
         <td class="num">${f.speed_kt != null ? f.speed_kt + " kt" : "—"}</td>
         <td class="num">${f.distance} ${unit} ${esc(f.bearing)}</td>

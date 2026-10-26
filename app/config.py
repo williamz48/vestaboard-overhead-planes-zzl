@@ -81,6 +81,7 @@ class Settings(BaseModel):
     airlines_only: bool = False  # skip private/GA aircraft (callsign isn't an airline flight)
     aircraft_overrides: str = ""
     show_manufacturer: bool = True  # "AIRBUS A350-900" when it fits, else "A350-900"
+    aircraft_display: Literal["model", "icao_registration", "model_registration"] = "model"
     airline_colors: bool = True  # color tiles at both ends of the flight number row
     airline_color_overrides: str = ""
 
