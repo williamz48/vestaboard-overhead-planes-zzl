@@ -79,6 +79,8 @@ function readForm() {
 function updateModeFields() {
   const mode = $("[name=vestaboard_mode]").value;
   $$("[data-mode]").forEach((el) => (el.hidden = el.dataset.mode !== mode));
+  const idle = $("[name=idle_action]").value;
+  $$("[data-idle]").forEach((el) => (el.hidden = el.dataset.idle !== idle));
 }
 
 async function saveSettings(changes) {
@@ -105,6 +107,7 @@ $("#settings-form").addEventListener("submit", async (ev) => {
 });
 
 $("[name=vestaboard_mode]").addEventListener("change", updateModeFields);
+$("[name=idle_action]").addEventListener("change", updateModeFields);
 $("[name=board_model]").addEventListener("change", renderManualInputs);
 
 $$("[data-test]").forEach((btn) =>
@@ -331,7 +334,7 @@ function renderStatus(status) {
   pill.className = "pill " + ({ tracking: "ok", paused: "warn", "needs location": "warn" }[status.status] || (status.status.includes("error") ? "err" : ""));
   $("#btn-toggle").textContent = status.enabled ? "Pause" : "Resume";
 
-  const labels = { opensky: "OpenSky", flightaware: "FlightAware", vestaboard: "Vestaboard" };
+  const labels = { opensky: "OpenSky", flightaware: "FlightAware", vestaboard: "Vestaboard", weather: "Weather" };
   $("#errors").innerHTML =
     (!status.auth_enabled && !isPrivateHost(location.hostname)
       ? '<div class="error"><b>Dashboard is public:</b> anyone with this URL can change your settings. Set the DASHBOARD_PASSWORD environment variable.</div>'

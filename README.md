@@ -14,8 +14,10 @@ Shows the flight passing overhead on your Vestaboard Note (or Flagship):
 
 Positions come from the [OpenSky Network](https://opensky-network.org) and each
 flight is enriched with route and aircraft type from
-[FlightAware AeroAPI](https://www.flightaware.com/aeroapi/portal). Everything is
-configured from a web dashboard, and the app runs in Docker.
+[FlightAware AeroAPI](https://www.flightaware.com/aeroapi/portal). When no
+planes are nearby, the board can show the local time, date and weather (from
+[Open-Meteo](https://open-meteo.com), no key needed). Everything is configured
+from a web dashboard, and the app runs in Docker.
 
 ## Quick start (Docker)
 
@@ -124,13 +126,40 @@ sends when the text changes and never sends more often than that.
 |---|---|
 | Which flight to show | **Closest flight**, or **Rotate** through every flight in range |
 | Minimum time on board | A flight stays up at least this long before another replaces it (also the rotate interval) |
-| When no flights are nearby | Show an idle message, or keep the last flight up |
+| When no flights are nearby | Show the time, date and weather (default), show an idle message, or keep the last flight up |
+| Time format | 12-hour (`3:45 PM`) or 24-hour (`15:45`) |
+| Temperature | Fahrenheit, Celsius, or both |
+| Include weather | Add the current temperature and condition to the time and date |
 | Idle message | One row per line. `{63}`–`{70}` insert color tiles (red, orange, yellow, green, blue, violet, white, black) |
 | Min/max altitude | Ignore aircraft outside this altitude band |
 | Airline flights only | Skip private aircraft whose callsign is a tail number |
 | Aircraft name overrides | Rename aircraft: `ICAO_TYPE=NAME` or `REGISTRATION=NAME`, one per line |
 | Airline color tiles | Put the airline's color in the first and last tile of the flight number row |
 | Airline color overrides | `AIRLINE=COLOR`, one per line, keyed by ICAO (`UAL`) or IATA (`UA`) code. Colors: `RED`, `ORANGE`, `YELLOW`, `GREEN`, `BLUE`, `VIOLET`, `WHITE`, `BLACK`, or `NONE` |
+
+### Time, date and weather
+
+When no planes are in range, the board shows the time and date at the tracked
+location and the current weather from Open-Meteo, updating every minute:
+
+```
+    3:45 PM                     15:45
+   MON OCT 26             MONDAY OCTOBER 26
+ 22C 72F RAIN               6°C 43°F CLEAR
+                         H 20°C/69°F L 5°C/41°F
+  (Note, both units)      (Flagship, 24-hour, both units)
+```
+
+- **Time zone:** the time is local to the location you set, using the time zone
+  Open-Meteo reports for it, not the server's time zone.
+- **Conditions:** one word each: `CLEAR`, `FAIR`, `CLOUDY`, `OVERCAST`, `FOG`,
+  `DRIZZLE`, `RAIN`, `SHOWERS`, `SLEET`, `SNOW`, `STORM`. If a word doesn't fit
+  next to both temperatures, a shorter synonym is used (e.g. `OVERCAST` → `CLOUDY`).
+- **Note vs Flagship:** the Flagship also shows today's high and low and uses
+  degree signs. The Note has no degree sign (that tile is a heart), so it shows
+  `72F`.
+- **If Open-Meteo is unreachable:** the board still shows the time and date, and
+  the dashboard shows the error.
 
 ### Airline colors
 
@@ -213,6 +242,7 @@ app/
   vestaboard.py   character codes, layout, Cloud/Local/RW clients
   aircraft.py     ICAO type → short model names
   airlines.py     ICAO → IATA airline codes (fallback) and airline colors
+  weather.py      Open-Meteo client and time/date/weather board lines
   config.py       settings model + JSON persistence
   static/         dashboard (HTML/CSS/JS, Leaflet map)
 tests/

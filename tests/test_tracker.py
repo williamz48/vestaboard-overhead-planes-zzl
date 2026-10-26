@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 import httpx
 import pytest
 import respx
@@ -7,6 +10,7 @@ from app.flightaware import API_URL as FA_URL, FlightAwareClient
 from app.opensky import API_URL as OS_URL, TOKEN_URL, OpenSkyClient
 from app.tracker import Tracker
 from app.vestaboard import CLOUD_URL, VestaboardClient, grid_to_text
+from app.weather import API_URL as WX_URL, WeatherClient, format_time
 
 
 def state(icao, callsign, lat, lon, alt_m=1500.0, ground=False):
@@ -95,7 +99,10 @@ async def test_end_to_end(store):
 @pytest.mark.anyio
 @respx.mock
 async def test_idle_message(store):
-    store.update({"opensky_client_id": "", "opensky_client_secret": "", "idle_message": "NO PLANES\n{66}"})
+    store.update({
+        "opensky_client_id": "", "opensky_client_secret": "",
+        "idle_action": "message", "idle_message": "NO PLANES\n{66}",
+    })
     respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(200, json={"time": 0, "states": None}))
     board = respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
     async with httpx.AsyncClient() as http:
@@ -120,3 +127,50 @@ async def test_opensky_429(store):
     assert "rate limit" in tracker.state.opensky_error
     assert delay > 800
     assert board.call_count == 0  # don't replace the board with the idle message on errors
+
+
+OPEN_METEO = {
+    "timezone": "Asia/Tokyo", "utc_offset_seconds": 32400,
+    "current": {"temperature_2m": 21.6, "weather_code": 61},
+    "daily": {"temperature_2m_max": [25.0], "temperature_2m_min": [15.2]},
+}
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_clock_when_idle(store):
+    store.update({"opensky_client_id": "", "opensky_client_secret": "", "temperature_unit": "both",
+                  "time_format": "24h"})
+    respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(200, json={"time": 0, "states": []}))
+    wx = respx.get(WX_URL).mock(return_value=httpx.Response(200, json=OPEN_METEO))
+    board = respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http),
+                          WeatherClient(http))
+        delay = await tracker.step()
+        await tracker.step()  # cached weather, same minute: nothing new is sent
+    assert wx.call_count == 1
+    assert board.call_count == 1
+    assert delay <= 61
+    lines = tracker.state.board_lines
+    tokyo = datetime.now(ZoneInfo("Asia/Tokyo"))
+    assert lines[0] in {format_time(tokyo, "24h"), format_time(tokyo - timedelta(minutes=1), "24h")}
+    assert lines[1] == f"{tokyo.strftime('%a %b')} {tokyo.day}".upper()
+    assert lines[2] == "22C 71F RAIN"
+    params = wx.calls[0].request.url.params
+    assert params["latitude"] == "40.0" and params["timezone"] == "auto"
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_clock_without_weather_when_open_meteo_fails(store):
+    store.update({"opensky_client_id": "", "opensky_client_secret": ""})
+    respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(200, json={"time": 0, "states": []}))
+    respx.get(WX_URL).mock(return_value=httpx.Response(503))
+    respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http),
+                          WeatherClient(http))
+        await tracker.step()
+    assert "Open-Meteo" in tracker.state.weather_error
+    assert len(tracker.state.board_lines) == 2  # time and date only

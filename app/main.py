@@ -21,6 +21,7 @@ from .flightaware import FlightAwareClient, FlightAwareError
 from .opensky import OpenSkyClient, OpenSkyError
 from .tracker import Tracker
 from .vestaboard import VestaboardClient, VestaboardError
+from .weather import WeatherClient
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -38,7 +39,9 @@ USER_AGENT = "vestaboard-overhead-planes/1.0"
 async def lifespan(app: FastAPI):
     http = httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, follow_redirects=True)
     store = SettingsStore(DATA_DIR / "settings.json")
-    tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http))
+    tracker = Tracker(
+        store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http), WeatherClient(http)
+    )
     app.state.http, app.state.store, app.state.tracker = http, store, tracker
     task = asyncio.create_task(tracker.run()) if os.environ.get("DISABLE_TRACKER") != "1" else None
     try:

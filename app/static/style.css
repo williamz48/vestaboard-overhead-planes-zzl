@@ -180,7 +180,7 @@ textarea { font-family: ui-monospace, Menlo, monospace; resize: vertical; }
 .test-result:empty { display: none; }
 .test-result.ok { color: var(--ok); }
 .test-result.err { color: var(--err); }
-[data-mode][hidden] { display: none !important; }
+[data-mode][hidden], [data-idle][hidden] { display: none !important; }
 
 .save-bar {
   position: sticky; bottom: 0;
