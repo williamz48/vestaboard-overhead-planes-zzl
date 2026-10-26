@@ -63,6 +63,8 @@ class WeatherClient:
         self._http = http
         self._cache: tuple[tuple[float, float], float, Weather] | None = None
         self._retry_after = 0.0
+        self._error_key: tuple[float, float] | None = None
+        self._last_error = ""
         self.last: Weather | None = None
 
     async def get(self, lat: float, lon: float, max_age: float = DEFAULT_REFRESH_SECONDS) -> Weather:
@@ -70,8 +72,10 @@ class WeatherClient:
         now = time.monotonic()
         if self._cache and self._cache[0] == key and now - self._cache[1] < max_age:
             return self._cache[2]
-        if self._cache and self._cache[0] == key and now < self._retry_after:
-            return self._cache[2]  # stale but better than nothing while Open-Meteo is failing
+        if now < self._retry_after and self._error_key == key:
+            if self._cache and self._cache[0] == key:
+                return self._cache[2]  # stale but better than nothing while Open-Meteo is failing
+            raise WeatherError(self._last_error)  # don't retry on every call while it's down
         try:
             resp = await self._http.get(
                 API_URL,
@@ -98,8 +102,10 @@ class WeatherClient:
             )
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
             self._retry_after = now + ERROR_RETRY_SECONDS
+            self._error_key = key
             reason = str(exc) or type(exc).__name__  # timeouts have an empty message
-            raise WeatherError(f"Open-Meteo weather lookup failed: {reason}") from exc
+            self._last_error = f"Open-Meteo weather lookup failed: {reason}"
+            raise WeatherError(self._last_error) from exc
         self._cache = (key, now, weather)
         self.last = weather
         return weather

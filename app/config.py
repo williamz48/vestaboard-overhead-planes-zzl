@@ -47,6 +47,9 @@ class Settings(BaseModel):
     dnd_enabled: bool = False
     dnd_display: Literal["clock", "message"] = "clock"
     dnd_message: str = "DO NOT DISTURB"
+    dnd_schedule_enabled: bool = False  # also turn on every day between these local times
+    dnd_start: str = Field(default="22:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    dnd_end: str = Field(default="07:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
     # Location
     latitude: float | None = Field(default=None, ge=-90, le=90)

@@ -160,7 +160,7 @@ td .sub { color: var(--muted); font-size: 0.8rem; }
 .fields label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
 .fields label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
 .span-2 { grid-column: 1 / -1; }
-input[type=text], input[type=password], input[type=number], select, textarea {
+input[type=text], input[type=password], input[type=number], input[type=time], select, textarea {
   font: inherit; font-size: 0.95rem;
   padding: 7px 9px;
   border: 1px solid var(--border);
@@ -180,7 +180,7 @@ textarea { font-family: ui-monospace, Menlo, monospace; resize: vertical; }
 .test-result:empty { display: none; }
 .test-result.ok { color: var(--ok); }
 .test-result.err { color: var(--err); }
-[data-mode][hidden], [data-idle][hidden], [data-dnd][hidden] { display: none !important; }
+[data-mode][hidden], [data-idle][hidden], [data-dnd][hidden], [data-schedule][hidden] { display: none !important; }
 
 .save-bar {
   position: sticky; bottom: 0;

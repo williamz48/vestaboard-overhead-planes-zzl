@@ -9,7 +9,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
-from . import aircraft, airlines, geo, vestaboard, weather
+from . import aircraft, airlines, geo, schedule, vestaboard, weather
 from .config import Settings, SettingsStore
 from .flightaware import FlightAwareClient, FlightAwareError, FlightInfo
 from .opensky import Aircraft, OpenSkyClient, OpenSkyError
@@ -229,6 +229,9 @@ class TrackerState:
     current_icao24: str | None = None
     current_since: float | None = None
     flight_last_seen: float | None = None  # last time the flight on the board was in range
+    dnd_reason: str | None = None  # "manual" or "schedule" while do not disturb is on
+    dnd_until: float | None = None  # when a scheduled do not disturb window ends
+    dnd_until_text: str | None = None
     board_lines: list[str] | None = None
     board_grid: list[list[int]] | None = None
     board_sent_at: float | None = None
@@ -251,6 +254,7 @@ class Tracker:
         self.board = board
         self.weather = weather_client
         self._clock_showing = False
+        self._dnd_skip_until: float | None = None
         self.state = TrackerState()
         self._wake = asyncio.Event()
         self._poll_now = False
@@ -290,8 +294,12 @@ class Tracker:
         if not s.enabled:
             self.state.status = "paused"
             return 60
-        if s.dnd_enabled:
-            return await self.do_not_disturb(s)
+        next_dnd_start = await self.update_dnd(s)
+        if self.state.dnd_reason:
+            delay = await self.do_not_disturb(s)
+            if self.state.dnd_until:
+                delay = min(delay, max(1.0, self.state.dnd_until - time.time() + 0.5))
+            return delay
         if not s.has_location:
             self.state.status = "needs location"
             return 60
@@ -321,7 +329,63 @@ class Tracker:
             waits.append(60.5 - time.time() % 60)  # just after the next minute ticks over
         if not self.state.nearby and self.idle_delay_left(s) > 0:
             waits.append(self.idle_delay_left(s))
+        if next_dnd_start is not None:
+            waits.append(next_dnd_start + 0.5)
         return max(1.0, min(waits))
+
+    async def update_dnd(self, s: Settings) -> float | None:
+        """Work out whether do not disturb is on (by hand or by schedule).
+
+        Returns the seconds until the scheduled window next starts, if it is off.
+        """
+        self.state.dnd_reason = self.state.dnd_until = self.state.dnd_until_text = None
+        if s.dnd_enabled:
+            self.state.dnd_reason = "manual"
+            return None
+        if not s.dnd_schedule_enabled:
+            self._dnd_skip_until = None
+            return None
+        now = await self.location_now(s)
+        if not schedule.in_window(now, s.dnd_start, s.dnd_end):
+            self._dnd_skip_until = None
+            return schedule.seconds_until(now, s.dnd_start)
+        until = now.timestamp() + schedule.seconds_until(now, s.dnd_end)
+        if self._dnd_skip_until and time.time() < self._dnd_skip_until:
+            return schedule.seconds_until(now, s.dnd_start)  # skipped until this window ends
+        self.state.dnd_reason = "schedule"
+        self.state.dnd_until = until
+        end = datetime.fromtimestamp(until, now.tzinfo)
+        self.state.dnd_until_text = weather.format_time(end, s.time_format)
+        return None
+
+    def skip_scheduled_dnd(self) -> None:
+        """End today's scheduled do not disturb window early."""
+        if self.state.dnd_reason == "schedule" and self.state.dnd_until:
+            self._dnd_skip_until = self.state.dnd_until
+            self.state.board_lines = None
+            self.wake(poll=True)
+
+    async def current_weather(self, s: Settings) -> weather.Weather | None:
+        if self.weather is None or not s.has_location:
+            return None
+        try:
+            current = await self.weather.get(
+                s.latitude, s.longitude, max_age=s.weather_refresh_minutes * 60
+            )
+            self.state.weather_error = None
+            return current
+        except WeatherError as exc:
+            self.state.weather_error = str(exc)
+            log.warning("%s", exc)
+            return self.weather.last
+
+    async def location_now(self, s: Settings, current: weather.Weather | None = None) -> datetime:
+        """Local time at the tracked location (Open-Meteo reports its time zone).
+
+        Falls back to the container's clock until the first weather lookup works.
+        """
+        current = current or await self.current_weather(s)
+        return datetime.now(current.tz()) if current else datetime.now().astimezone()
 
     def idle_delay_left(self, s: Settings) -> float:
         """Seconds the last flight stays up after leaving range before the idle screen."""
@@ -451,20 +515,8 @@ class Tracker:
     async def show_clock(self, s: Settings) -> None:
         """Show the time, date and current weather for the configured location."""
         self._clock_showing = True
-        current = None
-        if self.weather is not None and s.has_location:
-            try:
-                current = await self.weather.get(
-                    s.latitude, s.longitude, max_age=s.weather_refresh_minutes * 60
-                )
-                self.state.weather_error = None
-            except WeatherError as exc:
-                self.state.weather_error = str(exc)
-                log.warning("%s", exc)
-                current = self.weather.last
-        # Local time at the tracked location (Open-Meteo reports its time zone);
-        # fall back to the container's clock until the first weather lookup works.
-        now = datetime.now(current.tz()) if current else datetime.now().astimezone()
+        current = await self.current_weather(s)
+        now = await self.location_now(s, current)
         lines = weather.clock_lines(
             now,
             current,
@@ -537,7 +589,9 @@ class Tracker:
         return {
             "status": st.status,
             "enabled": s.enabled,
-            "dnd": s.dnd_enabled,
+            "dnd": bool(st.dnd_reason),
+            "dnd_reason": st.dnd_reason,
+            "dnd_until": st.dnd_until_text,
             "last_poll": st.last_poll,
             "next_poll": st.next_poll,
             "errors": {

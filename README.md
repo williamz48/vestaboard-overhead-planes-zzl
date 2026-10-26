@@ -156,6 +156,18 @@ FlightAware requests and the board shows either:
 Turn it off and tracking resumes straight away. To stop the board updating
 altogether, use **Pause** instead.
 
+**Scheduling:** tick **Also every day on a schedule** and set the **From** and
+**Until** times to have do not disturb turn itself on and off every day.
+- **Overnight windows:** a window can run past midnight (e.g. 22:00 to 07:00).
+- **Time zone:** times are local to the tracked location, using the time zone
+  Open-Meteo reports for it, so a server in another time zone still switches at
+  the right moment.
+- **Ending a window early:** during a scheduled window, the top bar button
+  reads **End do not disturb**. Clicking it resumes tracking until the next
+  scheduled start.
+- **Turning it on by hand:** ticking **Do not disturb now** keeps it on outside
+  the schedule too.
+
 ### Even centering
 
 A row can only be centered exactly when its length leaves an even number of

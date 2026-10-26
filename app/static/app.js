@@ -83,6 +83,8 @@ function updateModeFields() {
   $$("[data-idle]").forEach((el) => (el.hidden = !el.dataset.idle.split(" ").includes(idle)));
   const dnd = $("[name=dnd_display]").value;
   $$("[data-dnd]").forEach((el) => (el.hidden = el.dataset.dnd !== dnd));
+  const scheduled = $("[name=dnd_schedule_enabled]").checked;
+  $$("[data-schedule]").forEach((el) => (el.hidden = !scheduled));
 }
 
 async function saveSettings(changes) {
@@ -111,6 +113,7 @@ $("#settings-form").addEventListener("submit", async (ev) => {
 $("[name=vestaboard_mode]").addEventListener("change", updateModeFields);
 $("[name=idle_action]").addEventListener("change", updateModeFields);
 $("[name=dnd_display]").addEventListener("change", updateModeFields);
+$("[name=dnd_schedule_enabled]").addEventListener("change", updateModeFields);
 $("[name=board_model]").addEventListener("change", renderManualInputs);
 
 $$("[data-test]").forEach((btn) =>
@@ -289,7 +292,7 @@ function renderCurrent(status) {
     return;
   }
   if (!f) {
-    el.innerHTML = `<p class="muted">${status.dnd ? "Do not disturb is on, so flight lookups are stopped." : status.nearby.length ? "" : "No flights in range right now."}</p>`;
+    el.innerHTML = `<p class="muted">${status.dnd ? `Do not disturb is on${status.dnd_until ? ` until ${esc(status.dnd_until)}` : ""}, so flight lookups are stopped.` : status.nearby.length ? "" : "No flights in range right now."}</p>`;
     return;
   }
   const unit = status.location.unit;
@@ -377,6 +380,12 @@ $("#btn-refresh").addEventListener("click", async () => {
 });
 
 $("#btn-dnd").addEventListener("click", async () => {
+  if (lastStatus && lastStatus.dnd_reason === "schedule") {
+    await api("/api/dnd/skip", { method: "POST" });
+    toast("Do not disturb ended early; it will start again at the next scheduled time");
+    setTimeout(refreshStatus, 1500);
+    return;
+  }
   const dnd = !(lastStatus && lastStatus.dnd);
   await saveSettings({ dnd_enabled: dnd });
   toast(dnd ? "Do not disturb is on: flight lookups stopped" : "Do not disturb is off");

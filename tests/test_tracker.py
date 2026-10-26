@@ -252,3 +252,62 @@ async def test_do_not_disturb_message_then_back_to_tracking(store):
     assert opensky.call_count == 1
     assert tracker.state.board_lines[0] == "{67}    UA123    {67}"
     assert board.call_count == 2
+
+
+def _window_around_now(tz: str, before: int, after: int) -> tuple[str, str]:
+    now = datetime.now(ZoneInfo(tz))
+    return ((now - timedelta(minutes=before)).strftime("%H:%M"),
+            (now + timedelta(minutes=after)).strftime("%H:%M"))
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_scheduled_do_not_disturb_and_skip(store):
+    start, end = _window_around_now("Asia/Tokyo", 30, 90)  # OPEN_METEO says the location is in Tokyo
+    store.update({"dnd_schedule_enabled": True, "dnd_start": start, "dnd_end": end,
+                  "dnd_display": "message", "dnd_message": "SHH", "time_format": "24h",
+                  "opensky_client_id": "", "opensky_client_secret": "", "flightaware_api_key": ""})
+    opensky = respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(
+        200, json={"time": 0, "states": [state("a2", "UAL123", 40.01, -75.0)]}))
+    respx.get(WX_URL).mock(return_value=httpx.Response(200, json=OPEN_METEO))
+    respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http),
+                          WeatherClient(http))
+        delay = await tracker.step()
+        assert opensky.call_count == 0
+        assert tracker.state.board_lines == ["SHH"]
+        snap = tracker.snapshot()
+        assert snap["dnd"] and snap["dnd_reason"] == "schedule" and snap["dnd_until"] == end
+        assert delay <= 300
+
+        tracker.skip_scheduled_dnd()  # "End do not disturb" from the dashboard
+        tracker.state.board_sent_at -= 60
+        await tracker.step()
+        assert opensky.call_count == 1
+        assert tracker.snapshot()["dnd"] is False
+        assert tracker.state.board_lines[0] == "{67}    UA123    {67}"
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_outside_schedule_tracks_and_wakes_for_the_start(store):
+    start, end = _window_around_now("Asia/Tokyo", -20, 120)  # starts in 20 minutes
+    store.update({"dnd_schedule_enabled": True, "dnd_start": start, "dnd_end": end,
+                  "opensky_client_id": "", "opensky_client_secret": "", "poll_interval": 3600})
+    opensky = respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(200, json={"states": []}))
+    respx.get(WX_URL).mock(return_value=httpx.Response(200, json=OPEN_METEO))
+    respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http),
+                          WeatherClient(http))
+        store.update({"idle_action": "message"})
+        delay = await tracker.step()
+    assert opensky.call_count == 1
+    assert tracker.snapshot()["dnd"] is False
+    assert 18 * 60 < delay <= 20 * 60 + 1
+
+
+def test_dnd_times_are_validated(store):
+    with pytest.raises(Exception):
+        store.update({"dnd_start": "25:00"})

@@ -145,6 +145,12 @@ async def board_resume(request: Request):
     return {"ok": True}
 
 
+@app.post("/api/dnd/skip")
+async def dnd_skip(request: Request):
+    tracker(request).skip_scheduled_dnd()
+    return {"ok": True}
+
+
 @app.post("/api/test/{service}")
 async def test_service(request: Request, service: str):
     t = tracker(request)

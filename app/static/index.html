@@ -75,7 +75,12 @@
       <div class="card-head"><h2>Do not disturb</h2></div>
       <p class="hint">Stops all flight lookups (OpenSky and FlightAware) and shows the time, date &amp; weather or your own message instead.</p>
       <div class="fields">
-        <label class="check span-2"><input type="checkbox" name="dnd_enabled"> Do not disturb</label>
+        <label class="check span-2"><input type="checkbox" name="dnd_enabled"> Do not disturb now</label>
+        <label class="check span-2"><input type="checkbox" name="dnd_schedule_enabled"> Also every day on a schedule</label>
+        <label data-schedule>From <input type="time" name="dnd_start" required></label>
+        <label data-schedule>Until <input type="time" name="dnd_end" required>
+          <span class="hint">Local time at the tracked location. Can run past midnight (e.g. 22:00 to 07:00).</span>
+        </label>
         <label>While on, show
           <select name="dnd_display">
             <option value="clock">Time, date &amp; weather</option>
