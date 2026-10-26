@@ -1,0 +1,31 @@
+services:
+  overhead-planes:
+    build: .
+    container_name: overhead-planes
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - planes-data:/data
+    environment:
+      TZ: America/New_York
+      # Protect the dashboard (recommended if it is reachable beyond your LAN).
+      # DASHBOARD_USERNAME: admin
+      # DASHBOARD_PASSWORD: change-me
+      #
+      # Optional: seed settings on first start. After that, use the dashboard.
+      # OPENSKY_CLIENT_ID: ""
+      # OPENSKY_CLIENT_SECRET: ""
+      # FLIGHTAWARE_API_KEY: ""
+      # VESTABOARD_MODE: cloud        # cloud | local | rw | disabled
+      # VESTABOARD_CLOUD_TOKEN: ""
+      # VESTABOARD_LOCAL_HOST: vestaboard.local
+      # VESTABOARD_LOCAL_KEY: ""
+      # VESTABOARD_BOARD: note        # note | flagship
+      # LATITUDE: "40.6413"
+      # LONGITUDE: "-73.7781"
+      # RADIUS: "5"
+      # RADIUS_UNIT: mi               # mi | km
+
+volumes:
+  planes-data:
