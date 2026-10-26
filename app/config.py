@@ -75,6 +75,7 @@ class Settings(BaseModel):
     min_display_seconds: int = Field(default=60, ge=15, le=3600)
     idle_action: Literal["clock", "message", "keep"] = "clock"
     idle_message: str = "CLEAR SKIES"
+    idle_delay_seconds: int = Field(default=0, ge=0, le=3600)  # keep the last flight up this long
     time_format: Literal["12h", "24h"] = "12h"
     temperature_unit: Literal["F", "C", "both"] = "F"
     clock_show_weather: bool = True

@@ -130,6 +130,7 @@ sends when the text changes and never sends more often than that.
 | Which flight to show | **Closest flight**, or **Rotate** through every flight in range |
 | Minimum time on board | A flight stays up at least this long before another replaces it (also the rotate interval) |
 | When no flights are nearby | Show the time, date and weather (default), show an idle message, or keep the last flight up |
+| Switch after | How long the last flight stays up after it leaves range before the message or time/date/weather appears (immediately up to 30 minutes). A new flight in range is shown straight away |
 | Time format | 12-hour (`3:45 PM`) or 24-hour (`15:45`) |
 | Temperature | Fahrenheit, Celsius, or both |
 | Include weather | Add the current temperature and condition to the time and date |

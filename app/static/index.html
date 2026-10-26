@@ -169,6 +169,20 @@
             <option value="keep">Keep the last flight</option>
           </select>
         </label>
+        <label data-idle="clock message">Switch after
+          <select name="idle_delay_seconds">
+            <option value="0">Immediately</option>
+            <option value="15">15 seconds</option>
+            <option value="30">30 seconds</option>
+            <option value="60">1 minute</option>
+            <option value="120">2 minutes</option>
+            <option value="300">5 minutes</option>
+            <option value="600">10 minutes</option>
+            <option value="900">15 minutes</option>
+            <option value="1800">30 minutes</option>
+          </select>
+          <span class="hint">How long the last flight stays up after it leaves range.</span>
+        </label>
         <label data-idle="message">Idle message (one line per row)
           <textarea name="idle_message" rows="3"></textarea>
         </label>

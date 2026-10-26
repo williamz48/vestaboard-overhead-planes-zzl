@@ -176,3 +176,34 @@ async def test_clock_without_weather_when_open_meteo_fails(store):
         await tracker.step()
     assert "Open-Meteo" in tracker.state.weather_error
     assert len(tracker.state.board_lines) == 2  # time and date only
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_idle_delay_keeps_last_flight_up(store):
+    store.update({"opensky_client_id": "", "opensky_client_secret": "", "flightaware_api_key": "",
+                  "idle_action": "message", "idle_message": "CLEAR SKIES", "idle_delay_seconds": 120})
+    states = respx.get(f"{OS_URL}/states/all").mock(side_effect=[
+        httpx.Response(200, json={"time": 0, "states": [state("a2", "UAL123", 40.01, -75.0)]}),
+        httpx.Response(200, json={"time": 0, "states": []}),
+        httpx.Response(200, json={"time": 0, "states": []}),
+    ])
+    board = respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http))
+        await tracker.step()
+        assert tracker.state.board_lines[0] == "{67}    UA123    {67}"
+
+        tracker.wake(poll=True)
+        tracker.state.board_sent_at -= 60  # past Vestaboard's rate limit
+        delay = await tracker.step()
+        assert board.call_count == 1  # flight left range, but it stays up for now
+        assert delay <= 60  # the next poll comes first
+        assert 100 < tracker.snapshot()["idle_in"] <= 120
+
+        tracker.state.flight_last_seen -= 121  # the delay has run out
+        tracker.wake(poll=True)
+        await tracker.step()
+    assert states.call_count == 3
+    assert board.call_count == 2
+    assert tracker.state.board_lines == ["CLEAR SKIES"]

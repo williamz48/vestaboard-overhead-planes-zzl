@@ -228,6 +228,7 @@ class TrackerState:
     nearby: list[TrackedFlight] = field(default_factory=list)
     current_icao24: str | None = None
     current_since: float | None = None
+    flight_last_seen: float | None = None  # last time the flight on the board was in range
     board_lines: list[str] | None = None
     board_grid: list[list[int]] | None = None
     board_sent_at: float | None = None
@@ -316,7 +317,17 @@ class Tracker:
             waits.append(self.state.manual_until - time.time())
         if self._clock_showing and not self.state.manual_until:
             waits.append(60.5 - time.time() % 60)  # just after the next minute ticks over
+        if not self.state.nearby and self.idle_delay_left(s) > 0:
+            waits.append(self.idle_delay_left(s))
         return max(1.0, min(waits))
+
+    def idle_delay_left(self, s: Settings) -> float:
+        """Seconds the last flight stays up after leaving range before the idle screen."""
+        if s.idle_action == "keep" or self.state.current_icao24 is None:
+            return 0.0
+        if self.state.flight_last_seen is None:
+            return 0.0
+        return max(0.0, s.idle_delay_seconds - (time.time() - self.state.flight_last_seen))
 
     async def poll(self, s: Settings) -> None:
         bbox = geo.bounding_box(s.latitude, s.longitude, geo.to_km(s.radius, s.radius_unit))
@@ -367,6 +378,8 @@ class Tracker:
         rows, cols = vestaboard.BOARD_SIZES[s.board_model]
         target = self._choose(s)
         if target is None:
+            if self.idle_delay_left(s) > 0:
+                return  # leave the last flight up until the idle delay runs out
             self.state.current_icao24 = None
             self.state.current_since = None
             if s.idle_action == "clock":
@@ -378,6 +391,7 @@ class Tracker:
                 await self.show(lines, s, source="idle")
             return
         self._clock_showing = False
+        self.state.flight_last_seen = time.time()
 
         if target.icao24 != self.state.current_icao24:
             self.state.current_icao24 = target.icao24
@@ -502,6 +516,7 @@ class Tracker:
             "flightaware_requests": self.flightaware.requests_made,
             "nearby": [f.to_dict(s.radius_unit) for f in st.nearby],
             "current_icao24": st.current_icao24,
+            "idle_in": round(self.idle_delay_left(s)) if not st.nearby else 0,
             "manual_until": st.manual_until,
             "board": {
                 "rows": rows,

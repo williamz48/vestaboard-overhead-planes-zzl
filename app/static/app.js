@@ -80,7 +80,7 @@ function updateModeFields() {
   const mode = $("[name=vestaboard_mode]").value;
   $$("[data-mode]").forEach((el) => (el.hidden = el.dataset.mode !== mode));
   const idle = $("[name=idle_action]").value;
-  $$("[data-idle]").forEach((el) => (el.hidden = el.dataset.idle !== idle));
+  $$("[data-idle]").forEach((el) => (el.hidden = !el.dataset.idle.split(" ").includes(idle)));
 }
 
 async function saveSettings(changes) {
@@ -281,6 +281,10 @@ function renderCurrent(status) {
     return;
   }
   const f = status.nearby.find((x) => x.icao24 === status.current_icao24);
+  if (!f && status.idle_in > 0) {
+    el.innerHTML = `<p class="muted">The last flight has left range; switching in ${status.idle_in}s.</p>`;
+    return;
+  }
   if (!f) {
     el.innerHTML = `<p class="muted">${status.nearby.length ? "" : "No flights in range right now."}</p>`;
     return;
