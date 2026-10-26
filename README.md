@@ -126,6 +126,7 @@ sends when the text changes and never sends more often than that.
 
 | Setting | What it does |
 |---|---|
+| Text alignment (Vestaboard section) | **Centered** (default) or **Left** |
 | Which flight to show | **Closest flight**, or **Rotate** through every flight in range |
 | Minimum time on board | A flight stays up at least this long before another replaces it (also the rotate interval) |
 | When no flights are nearby | Show the time, date and weather (default), show an idle message, or keep the last flight up |
@@ -140,6 +141,23 @@ sends when the text changes and never sends more often than that.
 | Aircraft name overrides | Rename aircraft: `ICAO_TYPE=NAME` or `REGISTRATION=NAME`, one per line |
 | Airline color tiles | Put the airline's color in the first and last tile of the flight number row |
 | Airline color overrides | `AIRLINE=COLOR`, one per line, keyed by ICAO (`UAL`) or IATA (`UA`) code. Colors: `RED`, `ORANGE`, `YELLOW`, `GREEN`, `BLUE`, `VIOLET`, `WHITE`, `BLACK`, or `NONE` |
+
+### Even centering
+
+A row can only be centered exactly when its length leaves an even number of
+blank tiles (on a 15-tile Note, rows of odd length). With centered text, rows
+that would be one tile off get an extra space at a natural break instead:
+
+| Row | Without | With |
+|---|---|---|
+| Flight number | `UA1234` | `UA 1234` |
+| Route | `KSFO - JFK` | `KSFO -  JFK` (the dash stays in the middle) |
+| Manufacturer + model | `AIRBUS A321NEO` | `AIRBUS  A321NEO` |
+| Model + registration | `B787-9 N27901` | `B787-9  N27901` |
+| Date | `MON OCT 26` | `MON  OCT 26` |
+
+Rows without a natural break (`A320-200`, a tail number like `N123AB`) are left
+as they are. Custom and idle messages are sent exactly as you type them.
 
 ### Time, date and weather
 

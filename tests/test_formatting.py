@@ -60,7 +60,8 @@ def _flight(**kw):
 
 def test_board_lines():
     f = _flight(flight="UA123", origin="SFO", destination="JFK", aircraft="B737-8 MAX")
-    assert board_lines(f, 15) == ["UA123", "SFO - JFK", "B737-8 MAX"]
+    assert board_lines(f, 15) == ["UA123", "SFO - JFK", "B737-8  MAX"]
+    assert board_lines(f, 15, align="left") == ["UA123", "SFO - JFK", "B737-8 MAX"]
     assert route_line("KSFO", None, 15) == "KSFO - ???"
     assert route_line(None, None, 15) == ""
     assert route_line("ABCDEFG", "HIJKLMN", 15) == "ABCDEFG-HIJKLMN"
@@ -132,7 +133,7 @@ def test_board_lines_manufacturer_when_it_fits():
     assert board_lines(fits, 15)[2] == "AIRBUS A350-900"
     assert board_lines(fits, 15, manufacturer=False)[2] == "A350-900"
     too_long = _flight(aircraft="B737-8 MAX", aircraft_long="BOEING 737-8 MAX")
-    assert board_lines(too_long, 15)[2] == "B737-8 MAX"
+    assert board_lines(too_long, 15, align="left")[2] == "B737-8 MAX"
     assert board_lines(too_long, 22)[2] == "BOEING 737-8 MAX"  # Flagship has room
     unknown_maker = _flight(aircraft="ATR72-600")
     assert board_lines(unknown_maker, 15)[2] == "ATR72-600"
@@ -190,3 +191,45 @@ def test_aircraft_row_modes():
     assert aircraft_line(_flight(), 15, "icao_registration") == ""
 
     assert board_lines(a350, 15, aircraft_mode="icao_registration")[2] == "A359 N501DN"
+
+
+def test_balance():
+    assert vestaboard.balance("UA1234", 15, split=2) == "UA 1234"
+    assert vestaboard.balance("UA123", 15, split=2) == "UA123"  # already even
+    assert vestaboard.balance("BOEING 787-9", 15) == "BOEING  787-9"
+    assert vestaboard.balance("MON OCT 26", 15) == "MON  OCT 26"
+    assert vestaboard.balance("A320-200", 15) == "A320-200"  # no natural break
+    assert vestaboard.balance("AIRBUS A350-900", 22, split=6) == "AIRBUS  A350-900"
+    assert vestaboard.balance("ABCDEFGHIJKLMN", 15) == "ABCDEFGHIJKLMN"  # no room
+    assert vestaboard.balance("UA 123", 15, max_len=6) == "UA 123"
+
+
+def _centered_evenly(row: str, width: int) -> bool:
+    grid = vestaboard.layout([row], "note" if width == 15 else "flagship", "center")
+    text = vestaboard.grid_to_text(grid)[len(grid) // 2]
+    return len(text) - len(text.lstrip()) == len(text) - len(text.rstrip())
+
+
+def test_board_rows_are_centered_evenly():
+    f = _flight(callsign="UAL1234", flight="UA1234", origin="KSFO", destination="JFK",
+                aircraft="A321neo", aircraft_long="AIRBUS A321neo", aircraft_type="A21N")
+    rows = board_lines(f, 15, colors=False)
+    assert rows == ["UA 1234", "KSFO -  JFK", "AIRBUS  A321NEO"]
+    assert all(_centered_evenly(r, 15) for r in rows)
+    assert route_line("JFK", "KSFO", 15, balanced=True) == "JFK  - KSFO"
+
+    f.color = 67
+    colored = board_lines(f, 15)
+    assert vestaboard.grid_to_text(vestaboard.layout(colored, "note"))[0] == "*   UA 1234   *"
+
+    a350 = _flight(aircraft="A350-900", aircraft_long="AIRBUS A350-900", aircraft_type="A359",
+                   registration="N501D")
+    assert aircraft_line(a350, 22, balanced=True) == "AIRBUS  A350-900"
+    assert aircraft_line(a350, 15, "model_registration", balanced=True) == "A350-900  N501D"
+    dash8 = _flight(aircraft="DHC-8-400", aircraft_long="DE HAVILLAND DHC-8-400", aircraft_type="DH8D")
+    assert aircraft_line(dash8, 21, balanced=True) == "DHC-8-400"  # long name doesn't fit 21
+    dhc6 = _flight(aircraft="DHC-6", aircraft_long="DE HAVILLAND DHC-6", aircraft_type="DHC6")
+    assert aircraft_line(dhc6, 21, balanced=True) == "DE HAVILLAND  DHC-6"
+
+    tail = _flight(callsign="N123AB", flight="N123AB")
+    assert board_lines(tail, 15, colors=False)[0] == "N123AB"  # no airline/number split

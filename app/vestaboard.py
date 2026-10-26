@@ -66,6 +66,27 @@ def fit(text: str, width: int) -> str:
     return text if len(text) <= width else text[:width].rstrip()
 
 
+def balance(text: str, width: int, split: int | None = None, max_len: int | None = None) -> str:
+    """Add one space so a centered row has as many blank tiles on the left as the right.
+
+    A row can only be centered exactly when ``width - len(text)`` is even. When it
+    isn't, a space is inserted at ``split`` (an index into ``text``), or else
+    beside the space nearest the middle. Text without a natural break is unchanged.
+    """
+    limit = width if max_len is None else min(width, max_len)
+    if not text or len(text) + 1 > limit or (width - len(text)) % 2 == 0:
+        return text
+    if split is None:
+        spaces = [i for i, c in enumerate(text) if c == " "]
+        if not spaces:
+            return text
+        middle = (len(text) - 1) / 2
+        split = min(spaces, key=lambda i: abs(i - middle))
+    if not 0 < split < len(text):
+        return text
+    return text[:split] + " " + text[split:]
+
+
 def with_edge_tiles(text: str, code: int, width: int, align: str = "center") -> str:
     """A full-width row with a color tile in the first and last columns.
 

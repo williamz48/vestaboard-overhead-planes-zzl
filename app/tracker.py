@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -113,16 +114,39 @@ def filter_flights(planes: list[Aircraft], s: Settings) -> list[TrackedFlight]:
     return result
 
 
-def route_line(origin: str | None, destination: str | None, width: int) -> str:
+def route_line(
+    origin: str | None, destination: str | None, width: int, balanced: bool = False
+) -> str:
     if not origin and not destination:
         return ""
     o, d = origin or "???", destination or "???"
     text = f"{o} - {d}"
-    return text if len(text) <= width else vestaboard.fit(f"{o}-{d}", width)
+    if len(text) > width:
+        return vestaboard.fit(f"{o}-{d}", width)
+    if balanced:
+        # Put the extra space beside the shorter code so the dash sits in the middle:
+        # "KSFO -  JFK", "JFK  - KSFO".
+        text = vestaboard.balance(text, width, split=len(o) + 2 if len(o) > len(d) else len(o))
+    return text
+
+
+def number_split(flight: TrackedFlight, number: str) -> int | None:
+    """Where to add a space in a flight number: between the airline and the digits."""
+    if not airlines.is_airline_callsign(flight.callsign):
+        return None  # a tail number such as N123AB has no airline part
+    if number != flight.callsign and re.match(r"^[A-Z0-9]{2}\d", number):
+        return 2  # IATA: "UA 1234", "9E 5034"
+    if re.match(r"^[A-Z]{3}\d", number):
+        return 3  # unconverted ICAO callsign: "XYZ 1234"
+    return None
 
 
 def aircraft_line(
-    flight: TrackedFlight, width: int, mode: str = "model", manufacturer: bool = True
+    flight: TrackedFlight,
+    width: int,
+    mode: str = "model",
+    manufacturer: bool = True,
+    balanced: bool = False,
 ) -> str:
     """The aircraft row.
 
@@ -130,23 +154,36 @@ def aircraft_line(
     ``icao_registration``: ICAO type designator and registration, "A359 N501DN".
     ``model_registration``: the model plus registration, "A350-900 N501DN", using
     the ICAO designator instead of the model when that's what it takes to fit.
-    Missing parts are left out.
+    Missing parts are left out. With ``balanced``, an extra space goes between the
+    manufacturer and model, or the model and registration, to center the row.
     """
-    models = [flight.aircraft_long] if manufacturer and flight.aircraft_long else []
-    models.append(flight.aircraft)
+    # Each candidate is (text, where to add a space if the row needs balancing).
+    maker = aircraft.MANUFACTURERS.get((flight.aircraft_type or "").upper(), "")
+    models: list[tuple[str, int | None]] = []
+    if manufacturer and flight.aircraft_long:
+        long_split = len(maker) if flight.aircraft_long.startswith(f"{maker} ") else None
+        models.append((flight.aircraft_long, long_split))  # "AIRBUS  A321NEO"
+    models.append((flight.aircraft, None))
     icao, reg = flight.aircraft_type or "", flight.registration or ""
-    join = lambda *parts: " ".join(p for p in parts if p).upper()  # noqa: E731
+
+    def with_reg(text: str) -> tuple[str, int | None]:
+        if text and reg:
+            return f"{text} {reg}", len(text)  # "A350-900  N501DN"
+        return text or reg, None
+
     if mode == "icao_registration":
-        candidates = [join(icao, reg)]
+        candidates = [with_reg(icao)]
     elif mode == "model_registration":
-        candidates = [join(m, reg) for m in models] + [join(icao, reg)]
+        candidates = [with_reg(m) for m, _ in models] + [with_reg(icao)]
     else:
         candidates = models
-    candidates = [c for c in candidates if c]
-    for text in candidates:
-        if len(text) <= width:
-            return text
-    return vestaboard.fit(candidates[-1], width) if candidates else ""
+    candidates = [(t.upper(), split) for t, split in candidates if t]
+    if not candidates:
+        return ""
+    text, split = next(((t, sp) for t, sp in candidates if len(t) <= width), candidates[-1])
+    if len(text) > width:
+        return vestaboard.fit(text, width)
+    return vestaboard.balance(text, width, split) if balanced else text
 
 
 def board_lines(
@@ -160,18 +197,22 @@ def board_lines(
     """Line 1: flight number, line 2: ORIGIN - DESTINATION, line 3: aircraft.
 
     With ``colors``, the flight number row gets the airline's color at both ends.
-    See :func:`aircraft_line` for ``manufacturer`` and ``aircraft_mode``.
+    See :func:`aircraft_line` for ``manufacturer`` and ``aircraft_mode``. When
+    centered, rows that can't be centered exactly get one extra space at a natural
+    break ("UA 1234") so the blank tiles on each side match.
     """
-    number = flight.flight or flight.callsign
-    first = (
-        vestaboard.with_edge_tiles(number, flight.color, width, align)
-        if colors and flight.color is not None
-        else vestaboard.fit(number, width)
-    )
+    balanced = align == "center"
+    number = vestaboard.fit(flight.flight or flight.callsign, width)
+    edge = colors and flight.color is not None
+    if balanced:
+        # Edge tiles leave width - 4 tiles for the number (tile and blank on each side).
+        max_len = width - 4 if edge else width
+        number = vestaboard.balance(number, width, number_split(flight, number), max_len)
+    first = vestaboard.with_edge_tiles(number, flight.color, width, align) if edge else number
     return [
         first,
-        route_line(flight.origin, flight.destination, width),
-        aircraft_line(flight, width, aircraft_mode, manufacturer),
+        route_line(flight.origin, flight.destination, width, balanced),
+        aircraft_line(flight, width, aircraft_mode, manufacturer, balanced),
     ]
 
 
@@ -385,6 +426,9 @@ class Tracker:
             unit=s.temperature_unit,
             show_weather=s.clock_show_weather,
         )
+        if s.align == "center":
+            cols = vestaboard.BOARD_SIZES[s.board_model][1]
+            lines = [vestaboard.balance(line, cols) for line in lines]
         await self.show(lines, s, source="clock")
 
     async def show(self, lines: list[str], s: Settings, source: str, force: bool = False) -> bool:

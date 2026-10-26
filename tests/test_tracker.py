@@ -9,7 +9,7 @@ from app.config import SECRET_MASK, Settings, SettingsStore
 from app.flightaware import API_URL as FA_URL, FlightAwareClient
 from app.opensky import API_URL as OS_URL, TOKEN_URL, OpenSkyClient
 from app.tracker import Tracker
-from app.vestaboard import CLOUD_URL, VestaboardClient, grid_to_text
+from app.vestaboard import CLOUD_URL, VestaboardClient, balance, grid_to_text
 from app.weather import API_URL as WX_URL, WeatherClient, format_time
 
 
@@ -82,7 +82,7 @@ async def test_end_to_end(store):
         sent = board.calls[0].request
         assert sent.headers["X-Vestaboard-Token"] == "tok"
         assert grid_to_text(httpx.Response(200, content=sent.content).json()) == [
-            "*    UA123    *", "   EWR - SFO   ", "  B737-8 MAX   ",
+            "*    UA123    *", "   EWR - SFO   ", "  B737-8  MAX  ",
         ]
         grid = httpx.Response(200, content=sent.content).json()
         assert grid[0][0] == grid[0][14] == 67  # United blue
@@ -157,8 +157,8 @@ async def test_clock_when_idle(store):
     lines = tracker.state.board_lines
     tokyo = datetime.now(ZoneInfo("Asia/Tokyo"))
     assert lines[0] in {format_time(tokyo, "24h"), format_time(tokyo - timedelta(minutes=1), "24h")}
-    assert lines[1] == f"{tokyo.strftime('%a %b')} {tokyo.day}".upper()
-    assert lines[2] == "22C 71F RAIN"
+    assert lines[1] == balance(f"{tokyo.strftime('%a %b')} {tokyo.day}".upper(), 15)
+    assert lines[2] == "22C 71F  RAIN"  # extra space so it centers exactly on 15 tiles
     params = wx.calls[0].request.url.params
     assert params["latitude"] == "40.0" and params["timezone"] == "auto"
 
