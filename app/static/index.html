@@ -164,13 +164,28 @@
         <label>Minimum time on board (seconds) <input type="number" name="min_display_seconds" min="15" max="3600"></label>
         <label>When no flights are nearby
           <select name="idle_action">
+            <option value="clock">Show time, date &amp; weather</option>
             <option value="message">Show a message</option>
             <option value="keep">Keep the last flight</option>
           </select>
         </label>
-        <label>Idle message (one line per row)
+        <label data-idle="message">Idle message (one line per row)
           <textarea name="idle_message" rows="3"></textarea>
         </label>
+        <label data-idle="clock">Time format
+          <select name="time_format">
+            <option value="12h">12-hour (3:45 PM)</option>
+            <option value="24h">24-hour (15:45)</option>
+          </select>
+        </label>
+        <label data-idle="clock">Temperature
+          <select name="temperature_unit">
+            <option value="F">Fahrenheit (72F)</option>
+            <option value="C">Celsius (22C)</option>
+            <option value="both">Both (22C 72F)</option>
+          </select>
+        </label>
+        <label data-idle="clock" class="check"><input type="checkbox" name="clock_show_weather"> Include weather (Open-Meteo, no key needed)</label>
         <label class="span-2">Aircraft name overrides
           <textarea name="aircraft_overrides" rows="4" placeholder="A21N=A321XLR&#10;N123AB=A321XLR"></textarea>
           <span class="hint">One per line: <code>ICAO_TYPE=NAME</code> or <code>REGISTRATION=NAME</code>. Registration matches win.</span>

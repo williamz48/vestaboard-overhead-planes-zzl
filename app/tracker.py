@@ -6,12 +6,14 @@ import asyncio
 import logging
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 
-from . import aircraft, airlines, geo, vestaboard
+from . import aircraft, airlines, geo, vestaboard, weather
 from .config import Settings, SettingsStore
 from .flightaware import FlightAwareClient, FlightAwareError, FlightInfo
 from .opensky import Aircraft, OpenSkyClient, OpenSkyError
 from .vestaboard import VestaboardClient, VestaboardError
+from .weather import WeatherClient, WeatherError
 
 log = logging.getLogger(__name__)
 
@@ -144,6 +146,7 @@ class TrackerState:
     opensky_error: str | None = None
     flightaware_error: str | None = None
     vestaboard_error: str | None = None
+    weather_error: str | None = None
     nearby: list[TrackedFlight] = field(default_factory=list)
     current_icao24: str | None = None
     current_since: float | None = None
@@ -161,11 +164,14 @@ class Tracker:
         opensky: OpenSkyClient,
         flightaware: FlightAwareClient,
         board: VestaboardClient,
+        weather_client: WeatherClient | None = None,
     ):
         self.store = store
         self.opensky = opensky
         self.flightaware = flightaware
         self.board = board
+        self.weather = weather_client
+        self._clock_showing = False
         self.state = TrackerState()
         self._wake = asyncio.Event()
         self._poll_now = False
@@ -215,6 +221,8 @@ class Tracker:
             await self.poll(s)
         if self.state.opensky_error is None:  # don't act on stale/missing data
             await self.update_display(s)
+        elif self._clock_showing and not self.state.manual_until:
+            await self.show_clock(s)  # keep the clock ticking while OpenSky is down
 
         # Sleep until the next poll unless something else needs attention sooner:
         # a held flight that may hand over to another one, a rate-limited board
@@ -228,6 +236,8 @@ class Tracker:
             waits.append(BOARD_MIN_GAP - (time.time() - self.state.board_sent_at))
         if self.state.manual_until:
             waits.append(self.state.manual_until - time.time())
+        if self._clock_showing and not self.state.manual_until:
+            waits.append(60.5 - time.time() % 60)  # just after the next minute ticks over
         return max(1.0, min(waits))
 
     async def poll(self, s: Settings) -> None:
@@ -281,10 +291,15 @@ class Tracker:
         if target is None:
             self.state.current_icao24 = None
             self.state.current_since = None
+            if s.idle_action == "clock":
+                await self.show_clock(s)
+                return
+            self._clock_showing = False
             if s.idle_action == "message" and s.idle_message.strip():
                 lines = s.idle_message.upper().splitlines()[:rows]
                 await self.show(lines, s, source="idle")
             return
+        self._clock_showing = False
 
         if target.icao24 != self.state.current_icao24:
             self.state.current_icao24 = target.icao24
@@ -307,6 +322,31 @@ class Tracker:
 
         lines = board_lines(target, cols, s.airline_colors, s.align)
         await self.show(lines, s, source=target.icao24)
+
+    async def show_clock(self, s: Settings) -> None:
+        """Show the time, date and current weather for the configured location."""
+        self._clock_showing = True
+        current = None
+        if self.weather is not None:
+            try:
+                current = await self.weather.get(s.latitude, s.longitude)
+                self.state.weather_error = None
+            except WeatherError as exc:
+                self.state.weather_error = str(exc)
+                log.warning("%s", exc)
+                current = self.weather.last
+        # Local time at the tracked location (Open-Meteo reports its time zone);
+        # fall back to the container's clock until the first weather lookup works.
+        now = datetime.now(current.tz()) if current else datetime.now().astimezone()
+        lines = weather.clock_lines(
+            now,
+            current,
+            board=s.board_model,
+            time_format=s.time_format,
+            unit=s.temperature_unit,
+            show_weather=s.clock_show_weather,
+        )
+        await self.show(lines, s, source="clock")
 
     async def show(self, lines: list[str], s: Settings, source: str, force: bool = False) -> bool:
         """Send lines to the board if they changed, respecting the board's rate limit."""
@@ -373,6 +413,7 @@ class Tracker:
                 "opensky": st.opensky_error,
                 "flightaware": st.flightaware_error,
                 "vestaboard": st.vestaboard_error,
+                "weather": st.weather_error,
             },
             "opensky_credits_remaining": self.opensky.credits_remaining,
             "flightaware_requests": self.flightaware.requests_made,

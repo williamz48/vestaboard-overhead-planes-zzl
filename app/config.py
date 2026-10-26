@@ -73,8 +73,11 @@ class Settings(BaseModel):
     # Display behaviour
     display_mode: Literal["closest", "rotate"] = "closest"
     min_display_seconds: int = Field(default=60, ge=15, le=3600)
-    idle_action: Literal["keep", "message"] = "message"
+    idle_action: Literal["clock", "message", "keep"] = "clock"
     idle_message: str = "CLEAR SKIES"
+    time_format: Literal["12h", "24h"] = "12h"
+    temperature_unit: Literal["F", "C", "both"] = "F"
+    clock_show_weather: bool = True
     airlines_only: bool = False  # skip private/GA aircraft (callsign isn't an airline flight)
     aircraft_overrides: str = ""
     airline_colors: bool = True  # color tiles at both ends of the flight number row
