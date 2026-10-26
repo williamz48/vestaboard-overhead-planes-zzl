@@ -10,7 +10,9 @@ Shows the flight passing overhead on your Vestaboard Note (or Flagship):
 
 1. **Flight number** (IATA, e.g. `UA1234`)
 2. **Origin - destination** (IATA airport codes)
-3. **Aircraft model** in short form (`B737-8 MAX`, `A320-200`, `A321neo`, `DHC-8-400`, `E175`…)
+3. **Aircraft model**, with the manufacturer when it fits (`AIRBUS A350-900`,
+   `BOEING 787-9`, `EMBRAER E175`), otherwise the compact form (`B737-8 MAX`,
+   `A350-1000`, `DHC-8-400`)
 
 Positions come from the [OpenSky Network](https://opensky-network.org) and each
 flight is enriched with route and aircraft type from
@@ -133,6 +135,7 @@ sends when the text changes and never sends more often than that.
 | Idle message | One row per line. `{63}`–`{70}` insert color tiles (red, orange, yellow, green, blue, violet, white, black) |
 | Min/max altitude | Ignore aircraft outside this altitude band |
 | Airline flights only | Skip private aircraft whose callsign is a tail number |
+| Show the manufacturer | Prefix the model with its maker when the row has room (`AIRBUS A350-900`); otherwise use the compact name |
 | Aircraft name overrides | Rename aircraft: `ICAO_TYPE=NAME` or `REGISTRATION=NAME`, one per line |
 | Airline color tiles | Put the airline's color in the first and last tile of the flight number row |
 | Airline color overrides | `AIRLINE=COLOR`, one per line, keyed by ICAO (`UAL`) or IATA (`UA`) code. Colors: `RED`, `ORANGE`, `YELLOW`, `GREEN`, `BLUE`, `VIOLET`, `WHITE`, `BLACK`, or `NONE` |
@@ -189,6 +192,21 @@ AAL=RED
 FlightAware reports ICAO type designators, which `app/aircraft.py` maps to short
 names (`B38M` → `B737-8 MAX`, `A320` → `A320-200`, `DH8D` → `DHC-8-400`,
 `B77W` → `B777-300ER`, …). Unknown types fall back to the raw designator.
+
+With **Show the manufacturer** on, the maker is added when the whole name fits
+on the row (15 tiles on a Note, 22 on a Flagship):
+
+| Type | Note | Flagship |
+|---|---|---|
+| `A359` | `AIRBUS A350-900` | `AIRBUS A350-900` |
+| `A35K` | `A350-1000` | `AIRBUS A350-1000` |
+| `B789` | `BOEING 787-9` | `BOEING 787-9` |
+| `B38M` | `B737-8 MAX` | `BOEING 737-8 MAX` |
+| `DH8D` | `DHC-8-400` | `DE HAVILLAND DHC-8-400` |
+
+Boeing, Beechcraft and Cessna drop their one-letter prefix after the maker name
+(`BOEING 787-9`, not `BOEING B787-9`). Overrides keep the maker from the type
+code, so `A21N=A321XLR` shows as `AIRBUS A321XLR`.
 
 Some variants share a designator. For example, the A321neo, A321LR and A321XLR
 all file as `A21N`. If you know which tail numbers fly the XLR, add overrides like:
