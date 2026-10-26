@@ -129,6 +129,31 @@ sends when the text changes and never sends more often than that.
 | Min/max altitude | Ignore aircraft outside this altitude band |
 | Airline flights only | Skip private aircraft whose callsign is a tail number |
 | Aircraft name overrides | Rename aircraft: `ICAO_TYPE=NAME` or `REGISTRATION=NAME`, one per line |
+| Airline color tiles | Put the airline's color in the first and last tile of the flight number row |
+| Airline color overrides | `AIRLINE=COLOR`, one per line, keyed by ICAO (`UAL`) or IATA (`UA`) code. Colors: `RED`, `ORANGE`, `YELLOW`, `GREEN`, `BLUE`, `VIOLET`, `WHITE`, `BLACK`, or `NONE` |
+
+### Airline colors
+
+With airline colors on, the flight number row looks like this, with the tiles in
+the airline's color (`█`):
+
+```
+█    UA123    █
+   SFO - JFK
+  B737-8 MAX
+```
+
+Vestaboard has eight tile colors, so each airline gets the closest match to its
+brand color (United → blue, Delta → red, Cathay Pacific → green, Air China → red,
+China Eastern → blue, Spirit → yellow, …). The table is `AIRLINE_COLORS` in
+`app/airlines.py`. Airlines not in it, and regional carriers that fly for several
+brands (SkyWest, Republic), get no tiles. Add an override for those, or to change
+a color you disagree with:
+
+```
+SKW=BLUE
+AAL=RED
+```
 
 ### Aircraft names
 
@@ -187,7 +212,7 @@ app/
   flightaware.py  AeroAPI client with caching
   vestaboard.py   character codes, layout, Cloud/Local/RW clients
   aircraft.py     ICAO type → short model names
-  airlines.py     ICAO → IATA airline codes (fallback)
+  airlines.py     ICAO → IATA airline codes (fallback) and airline colors
   config.py       settings model + JSON persistence
   static/         dashboard (HTML/CSS/JS, Leaflet map)
 tests/

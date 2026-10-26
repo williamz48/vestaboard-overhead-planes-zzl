@@ -66,6 +66,22 @@ def fit(text: str, width: int) -> str:
     return text if len(text) <= width else text[:width].rstrip()
 
 
+def with_edge_tiles(text: str, code: int, width: int, align: str = "center") -> str:
+    """A full-width row with a color tile in the first and last columns.
+
+    The text keeps the same position it would have without the tiles, and at
+    least one blank separates it from each tile.
+    """
+    inner = width - 2
+    text = fit(text, inner - 2)
+    if align == "center":
+        left = (inner - len(text)) // 2
+        body = " " * left + text + " " * (inner - left - len(text))
+    else:
+        body = (" " + text).ljust(inner)
+    return f"{{{code}}}{body}{{{code}}}"
+
+
 def layout(lines: list[str], board: str = "note", align: str = "center") -> list[list[int]]:
     """Lay out text lines onto a blank board grid, vertically centered."""
     rows, cols = BOARD_SIZES[board]

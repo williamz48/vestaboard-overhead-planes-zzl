@@ -116,6 +116,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; gap: 16p
 .tile.c67 { background: #0071bc; } .tile.c68 { background: #702f8a; }
 .tile.c69 { background: #f5f5f5; } .tile.c70 { background: #000; }
 
+.swatch {
+  display: inline-block; width: 10px; height: 14px; margin-right: 6px;
+  vertical-align: -2px; border-radius: 2px; border: 1px solid var(--border);
+}
+.swatch.c63 { background: #d7261e; } .swatch.c64 { background: #f7811c; }
+.swatch.c65 { background: #fcc419; } .swatch.c66 { background: #009952; }
+.swatch.c67 { background: #0071bc; } .swatch.c68 { background: #702f8a; }
+.swatch.c69 { background: #f5f5f5; } .swatch.c70 { background: #000; }
+
 .current { margin-top: 12px; font-size: 0.9rem; }
 .current dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; }
 .current dt { color: var(--muted); }

@@ -77,6 +77,8 @@ class Settings(BaseModel):
     idle_message: str = "CLEAR SKIES"
     airlines_only: bool = False  # skip private/GA aircraft (callsign isn't an airline flight)
     aircraft_overrides: str = ""
+    airline_colors: bool = True  # color tiles at both ends of the flight number row
+    airline_color_overrides: str = ""
 
     @field_validator(
         "opensky_client_id", "opensky_client_secret", "flightaware_api_key",

@@ -78,8 +78,10 @@ async def test_end_to_end(store):
         sent = board.calls[0].request
         assert sent.headers["X-Vestaboard-Token"] == "tok"
         assert grid_to_text(httpx.Response(200, content=sent.content).json()) == [
-            "     UA123     ", "   EWR - SFO   ", "  B737-8 MAX   ",
+            "*    UA123    *", "   EWR - SFO   ", "  B737-8 MAX   ",
         ]
+        grid = httpx.Response(200, content=sent.content).json()
+        assert grid[0][0] == grid[0][14] == 67  # United blue
 
         # A second step with identical data must not re-send to the board or re-query FlightAware.
         await tracker.step()

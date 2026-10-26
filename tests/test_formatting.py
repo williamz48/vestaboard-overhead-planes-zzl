@@ -64,3 +64,45 @@ def test_board_lines():
     assert route_line("KSFO", None, 15) == "KSFO - ???"
     assert route_line(None, None, 15) == ""
     assert route_line("ABCDEFG", "HIJKLMN", 15) == "ABCDEFG-HIJKLMN"
+
+
+def test_chinese_airlines():
+    assert airlines.iata_flight_number("CHH7981") == "HU7981"
+    assert airlines.iata_flight_number("CSC8633") == "3U8633"
+    assert airlines.iata_flight_number("CQH8501") == "9C8501"
+    assert airlines.iata_flight_number("CRK621") == "HX621"
+    assert airlines.iata_flight_number("CPA880") == "CX880"
+
+
+def test_airline_colors():
+    assert airlines.airline_color("UAL1") == 67
+    assert airlines.airline_color("DAL1") == 63
+    assert airlines.airline_color("CPA880") == 66
+    assert airlines.airline_color("N123AB") is None
+    overrides = aircraft.parse_overrides("AA=red\nSWA=none")
+    assert airlines.airline_color("AAL1", "AA1", overrides) == 63
+    assert airlines.airline_color("SWA1", "WN1", overrides) is None
+    # IATA override for an airline that isn't in the ICAO table
+    assert airlines.airline_color("XYZ1", "XY1", aircraft.parse_overrides("XY=GREEN")) == 66
+    for code in airlines.AIRLINE_COLORS.values():
+        assert code in airlines.COLOR_CODES
+
+
+def test_edge_tiles():
+    row = vestaboard.with_edge_tiles("UA1234", 67, 15)
+    grid = vestaboard.layout([row, "SFO - JFK", "B737-8 MAX"], "note", "center")
+    assert grid[0][0] == grid[0][14] == 67
+    assert vestaboard.grid_to_text(grid)[0] == "*   UA1234    *"
+    # text stays where it would be without the tiles
+    plain = vestaboard.layout(["UA1234"], "note", "center")
+    assert vestaboard.grid_to_text(plain)[1] == "    UA1234     "
+    left = vestaboard.layout([vestaboard.with_edge_tiles("UA1", 63, 15, "left")], "note", "left")
+    assert vestaboard.grid_to_text(left)[1] == "* UA1         *"
+    flagship = vestaboard.layout([vestaboard.with_edge_tiles("DL1", 63, 22)], "flagship")
+    assert flagship[2][0] == flagship[2][21] == 63
+
+
+def test_board_lines_with_color():
+    f = _flight(flight="UA123", origin="SFO", destination="JFK", aircraft="B737-8 MAX", color=67)
+    assert board_lines(f, 15)[0] == "{67}    UA123    {67}"
+    assert board_lines(f, 15, colors=False)[0] == "UA123"

@@ -40,6 +40,7 @@ class TrackedFlight:
     aircraft_type: str | None = None
     registration: str | None = None
     airline: str | None = None
+    color: int | None = None
     enriched: bool = False
 
     def to_dict(self, unit: str) -> dict:
@@ -64,7 +65,12 @@ def to_tracked(a: Aircraft, lat: float, lon: float) -> TrackedFlight:
     )
 
 
-def apply_enrichment(flight: TrackedFlight, info: FlightInfo | None, overrides: dict[str, str]) -> None:
+def apply_enrichment(
+    flight: TrackedFlight,
+    info: FlightInfo | None,
+    overrides: dict[str, str],
+    color_overrides: dict[str, str] | None = None,
+) -> None:
     if info is not None:
         flight.enriched = True
         if info.ident_iata:
@@ -77,6 +83,7 @@ def apply_enrichment(flight: TrackedFlight, info: FlightInfo | None, overrides: 
         flight.registration = info.registration
         flight.airline = info.operator
     flight.aircraft = aircraft.short_name(flight.aircraft_type, flight.registration, overrides)
+    flight.color = airlines.airline_color(flight.callsign, flight.flight, color_overrides)
 
 
 def filter_flights(planes: list[Aircraft], s: Settings) -> list[TrackedFlight]:
@@ -109,10 +116,21 @@ def route_line(origin: str | None, destination: str | None, width: int) -> str:
     return text if len(text) <= width else vestaboard.fit(f"{o}-{d}", width)
 
 
-def board_lines(flight: TrackedFlight, width: int) -> list[str]:
-    """Line 1: flight number, line 2: ORIGIN - DESTINATION, line 3: aircraft model."""
+def board_lines(
+    flight: TrackedFlight, width: int, colors: bool = True, align: str = "center"
+) -> list[str]:
+    """Line 1: flight number, line 2: ORIGIN - DESTINATION, line 3: aircraft model.
+
+    With ``colors``, the flight number row gets the airline's color at both ends.
+    """
+    number = flight.flight or flight.callsign
+    first = (
+        vestaboard.with_edge_tiles(number, flight.color, width, align)
+        if colors and flight.color is not None
+        else vestaboard.fit(number, width)
+    )
     return [
-        vestaboard.fit(flight.flight or flight.callsign, width),
+        first,
         route_line(flight.origin, flight.destination, width),
         vestaboard.fit(flight.aircraft, width),
     ]
@@ -226,9 +244,10 @@ class Tracker:
             return
         self.state.opensky_error = None
         overrides = aircraft.parse_overrides(s.aircraft_overrides)
+        color_overrides = aircraft.parse_overrides(s.airline_color_overrides)
         flights = filter_flights(planes, s)
         for f in flights:
-            apply_enrichment(f, self.flightaware.peek(f.callsign), overrides)
+            apply_enrichment(f, self.flightaware.peek(f.callsign), overrides, color_overrides)
         self.state.nearby = flights
         self.state.last_poll = time.time()
         self.state.next_poll = self.state.last_poll + (self._next_poll_mono - time.monotonic())
@@ -279,9 +298,15 @@ class Tracker:
                 info = None
                 self.state.flightaware_error = str(exc)
                 log.warning("%s", exc)
-            apply_enrichment(target, info, aircraft.parse_overrides(s.aircraft_overrides))
+            apply_enrichment(
+                target,
+                info,
+                aircraft.parse_overrides(s.aircraft_overrides),
+                aircraft.parse_overrides(s.airline_color_overrides),
+            )
 
-        await self.show(board_lines(target, cols), s, source=target.icao24)
+        lines = board_lines(target, cols, s.airline_colors, s.align)
+        await self.show(lines, s, source=target.icao24)
 
     async def show(self, lines: list[str], s: Settings, source: str, force: bool = False) -> bool:
         """Send lines to the board if they changed, respecting the board's rate limit."""

@@ -303,7 +303,7 @@ function renderNearby(status) {
     .map((f) => {
       const route = f.origin || f.destination ? `${esc(f.origin || "?")} – ${esc(f.destination || "?")}` : '<span class="sub">—</span>';
       return `<tr class="${f.icao24 === status.current_icao24 ? "current" : ""}">
-        <td><b>${esc(f.flight || f.callsign)}</b></td>
+        <td>${f.color ? `<span class="swatch c${f.color}"></span>` : ""}<b>${esc(f.flight || f.callsign)}</b></td>
         <td>${esc(f.callsign)}</td>
         <td>${route}</td>
         <td>${f.aircraft ? esc(f.aircraft) : '<span class="sub">—</span>'}</td>

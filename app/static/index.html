@@ -175,6 +175,11 @@
           <textarea name="aircraft_overrides" rows="4" placeholder="A21N=A321XLR&#10;N123AB=A321XLR"></textarea>
           <span class="hint">One per line: <code>ICAO_TYPE=NAME</code> or <code>REGISTRATION=NAME</code>. Registration matches win.</span>
         </label>
+        <label class="check span-2"><input type="checkbox" name="airline_colors"> Airline color tiles at both ends of the flight number row</label>
+        <label class="span-2">Airline color overrides
+          <textarea name="airline_color_overrides" rows="3" placeholder="AAL=RED&#10;SKW=NONE"></textarea>
+          <span class="hint">One per line: <code>AIRLINE=COLOR</code>, using the ICAO (<code>UAL</code>) or IATA (<code>UA</code>) code. Colors: RED, ORANGE, YELLOW, GREEN, BLUE, VIOLET, WHITE, BLACK, or NONE.</span>
+        </label>
         <label class="check span-2"><input type="checkbox" name="enabled"> Tracking enabled</label>
       </div>
     </section>
