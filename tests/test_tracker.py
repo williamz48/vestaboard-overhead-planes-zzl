@@ -207,3 +207,48 @@ async def test_idle_delay_keeps_last_flight_up(store):
     assert states.call_count == 3
     assert board.call_count == 2
     assert tracker.state.board_lines == ["CLEAR SKIES"]
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_do_not_disturb_clock_makes_no_flight_requests(store):
+    store.update({"dnd_enabled": True, "dnd_display": "clock", "weather_refresh_minutes": 30})
+    opensky = respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(200, json={}))
+    token = respx.post(TOKEN_URL).mock(return_value=httpx.Response(200, json={}))
+    flightaware = respx.get(url__startswith=FA_URL).mock(return_value=httpx.Response(200, json={}))
+    wx = respx.get(WX_URL).mock(return_value=httpx.Response(200, json=OPEN_METEO))
+    board = respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http),
+                          WeatherClient(http))
+        delay = await tracker.step()
+        await tracker.step()
+    assert opensky.call_count == token.call_count == flightaware.call_count == 0
+    assert wx.call_count == 1 and board.call_count == 1
+    assert tracker.state.status == "do not disturb"
+    assert tracker.state.board_lines[2] == "71F  RAIN"
+    assert delay <= 61
+    assert tracker.snapshot()["dnd"] is True
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_do_not_disturb_message_then_back_to_tracking(store):
+    store.update({"dnd_enabled": True, "dnd_display": "message", "dnd_message": "Quiet hours\n{68}",
+                  "opensky_client_id": "", "opensky_client_secret": "", "flightaware_api_key": ""})
+    opensky = respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(
+        200, json={"time": 0, "states": [state("a2", "UAL123", 40.01, -75.0)]}))
+    board = respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http))
+        await tracker.step()
+        assert opensky.call_count == 0
+        assert tracker.state.board_lines == ["QUIET HOURS", "{68}"]
+
+        store.update({"dnd_enabled": False})
+        tracker.settings_changed()
+        tracker.state.board_sent_at -= 60  # past Vestaboard's rate limit
+        await tracker.step()
+    assert opensky.call_count == 1
+    assert tracker.state.board_lines[0] == "{67}    UA123    {67}"
+    assert board.call_count == 2

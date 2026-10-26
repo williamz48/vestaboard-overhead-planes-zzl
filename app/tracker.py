@@ -290,6 +290,8 @@ class Tracker:
         if not s.enabled:
             self.state.status = "paused"
             return 60
+        if s.dnd_enabled:
+            return await self.do_not_disturb(s)
         if not s.has_location:
             self.state.status = "needs location"
             return 60
@@ -370,11 +372,40 @@ class Tracker:
             return flights[(ids.index(current.icao24) + 1) % len(flights)]
         return flights[0]
 
-    async def update_display(self, s: Settings) -> None:
+    def manual_hold_active(self) -> bool:
+        """True while a custom message from the dashboard is being held on the board."""
+        if self.state.manual_until and time.time() < self.state.manual_until:
+            return True
+        self.state.manual_until = None
+        return False
+
+    async def do_not_disturb(self, s: Settings) -> float:
+        """No OpenSky/FlightAware requests: show the clock or the DND message instead."""
+        self.state.status = "do not disturb"
+        self.state.nearby = []
+        self.state.current_icao24 = self.state.current_since = None
+        self.state.flight_last_seen = None
+        if not self.manual_hold_active():
+            if s.dnd_display == "clock":
+                await self.show_clock(s)
+            else:
+                self._clock_showing = False
+                rows = vestaboard.BOARD_SIZES[s.board_model][0]
+                lines = s.dnd_message.upper().splitlines()[:rows]
+                if any(line.strip() for line in lines):
+                    await self.show(lines, s, source="dnd")
+        waits = [300.0]  # settings changes wake the loop immediately
+        if self._clock_showing and not self.state.manual_until:
+            waits.append(60.5 - time.time() % 60)
+        if self._pending and self.state.board_sent_at:
+            waits.append(BOARD_MIN_GAP - (time.time() - self.state.board_sent_at))
         if self.state.manual_until:
-            if time.time() < self.state.manual_until:
-                return
-            self.state.manual_until = None
+            waits.append(self.state.manual_until - time.time())
+        return max(1.0, min(waits))
+
+    async def update_display(self, s: Settings) -> None:
+        if self.manual_hold_active():
+            return
         rows, cols = vestaboard.BOARD_SIZES[s.board_model]
         target = self._choose(s)
         if target is None:
@@ -421,9 +452,11 @@ class Tracker:
         """Show the time, date and current weather for the configured location."""
         self._clock_showing = True
         current = None
-        if self.weather is not None:
+        if self.weather is not None and s.has_location:
             try:
-                current = await self.weather.get(s.latitude, s.longitude)
+                current = await self.weather.get(
+                    s.latitude, s.longitude, max_age=s.weather_refresh_minutes * 60
+                )
                 self.state.weather_error = None
             except WeatherError as exc:
                 self.state.weather_error = str(exc)
@@ -504,6 +537,7 @@ class Tracker:
         return {
             "status": st.status,
             "enabled": s.enabled,
+            "dnd": s.dnd_enabled,
             "last_poll": st.last_poll,
             "next_poll": st.next_poll,
             "errors": {

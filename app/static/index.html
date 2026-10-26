@@ -16,6 +16,7 @@
   <div class="topbar-actions">
     <span id="status-pill" class="pill">…</span>
     <button id="btn-refresh" class="btn">Refresh now</button>
+    <button id="btn-dnd" class="btn">Do not disturb</button>
     <button id="btn-toggle" class="btn">Pause</button>
   </div>
 </header>
@@ -70,6 +71,23 @@
   </section>
 
   <form id="settings-form" class="settings" autocomplete="off">
+    <section class="card">
+      <div class="card-head"><h2>Do not disturb</h2></div>
+      <p class="hint">Stops all flight lookups (OpenSky and FlightAware) and shows the time, date &amp; weather or your own message instead.</p>
+      <div class="fields">
+        <label class="check span-2"><input type="checkbox" name="dnd_enabled"> Do not disturb</label>
+        <label>While on, show
+          <select name="dnd_display">
+            <option value="clock">Time, date &amp; weather</option>
+            <option value="message">A custom message</option>
+          </select>
+        </label>
+        <label data-dnd="message">Message (one line per row)
+          <textarea name="dnd_message" rows="3"></textarea>
+        </label>
+      </div>
+    </section>
+
     <section class="card">
       <div class="card-head"><h2>Location</h2></div>
       <div class="fields">
@@ -186,20 +204,6 @@
         <label data-idle="message">Idle message (one line per row)
           <textarea name="idle_message" rows="3"></textarea>
         </label>
-        <label data-idle="clock">Time format
-          <select name="time_format">
-            <option value="12h">12-hour (3:45 PM)</option>
-            <option value="24h">24-hour (15:45)</option>
-          </select>
-        </label>
-        <label data-idle="clock">Temperature
-          <select name="temperature_unit">
-            <option value="F">Fahrenheit (72F)</option>
-            <option value="C">Celsius (22C)</option>
-            <option value="both">Both (22C/72F)</option>
-          </select>
-        </label>
-        <label data-idle="clock" class="check"><input type="checkbox" name="clock_show_weather"> Include weather (Open-Meteo, no key needed)</label>
         <label>Aircraft row
           <select name="aircraft_display">
             <option value="model">Model (A350-900)</option>
@@ -218,6 +222,38 @@
           <span class="hint">One per line: <code>AIRLINE=COLOR</code>, using the ICAO (<code>UAL</code>) or IATA (<code>UA</code>) code. Colors: RED, ORANGE, YELLOW, GREEN, BLUE, VIOLET, WHITE, BLACK, or NONE.</span>
         </label>
         <label class="check span-2"><input type="checkbox" name="enabled"> Tracking enabled</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Time, date &amp; weather</h2></div>
+      <p class="hint">Used by the idle screen and by Do not disturb. Times are local to the tracked location.</p>
+      <div class="fields">
+        <label>Time format
+          <select name="time_format">
+            <option value="12h">12-hour (3:45 PM)</option>
+            <option value="24h">24-hour (15:45)</option>
+          </select>
+        </label>
+        <label>Temperature
+          <select name="temperature_unit">
+            <option value="F">Fahrenheit (72F)</option>
+            <option value="C">Celsius (22C)</option>
+            <option value="both">Both (22C/72F)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" name="clock_show_weather"> Include weather (Open-Meteo, no key needed)</label>
+        <label>Refresh weather every
+          <select name="weather_refresh_minutes">
+            <option value="5">5 minutes</option>
+            <option value="10">10 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+          </select>
+          <span class="hint">Open-Meteo updates current conditions every 15 minutes.</span>
+        </label>
       </div>
     </section>
 

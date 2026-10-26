@@ -15,7 +15,7 @@ import httpx
 from . import vestaboard
 
 API_URL = "https://api.open-meteo.com/v1/forecast"
-CACHE_SECONDS = 15 * 60  # Open-Meteo's "current" values update every 15 minutes
+DEFAULT_REFRESH_SECONDS = 15 * 60  # Open-Meteo's "current" values update every 15 minutes
 ERROR_RETRY_SECONDS = 5 * 60
 
 # WMO weather interpretation codes -> one-word condition.
@@ -65,10 +65,10 @@ class WeatherClient:
         self._retry_after = 0.0
         self.last: Weather | None = None
 
-    async def get(self, lat: float, lon: float) -> Weather:
+    async def get(self, lat: float, lon: float, max_age: float = DEFAULT_REFRESH_SECONDS) -> Weather:
         key = (round(lat, 3), round(lon, 3))
         now = time.monotonic()
-        if self._cache and self._cache[0] == key and now - self._cache[1] < CACHE_SECONDS:
+        if self._cache and self._cache[0] == key and now - self._cache[1] < max_age:
             return self._cache[2]
         if self._cache and self._cache[0] == key and now < self._retry_after:
             return self._cache[2]  # stale but better than nothing while Open-Meteo is failing
@@ -98,7 +98,8 @@ class WeatherClient:
             )
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
             self._retry_after = now + ERROR_RETRY_SECONDS
-            raise WeatherError(f"Open-Meteo weather lookup failed: {exc}") from exc
+            reason = str(exc) or type(exc).__name__  # timeouts have an empty message
+            raise WeatherError(f"Open-Meteo weather lookup failed: {reason}") from exc
         self._cache = (key, now, weather)
         self.last = weather
         return weather

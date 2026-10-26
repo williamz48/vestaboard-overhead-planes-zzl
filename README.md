@@ -134,6 +134,7 @@ sends when the text changes and never sends more often than that.
 | Time format | 12-hour (`3:45 PM`) or 24-hour (`15:45`) |
 | Temperature | Fahrenheit, Celsius, or both |
 | Include weather | Add the current temperature and condition to the time and date |
+| Refresh weather every | How often to ask Open-Meteo for new conditions: 5 minutes to 2 hours (default 15 minutes, which is how often Open-Meteo updates) |
 | Idle message | One row per line. `{63}`–`{70}` insert color tiles (red, orange, yellow, green, blue, violet, white, black) |
 | Min/max altitude | Ignore aircraft outside this altitude band |
 | Airline flights only | Skip private aircraft whose callsign is a tail number |
@@ -142,6 +143,18 @@ sends when the text changes and never sends more often than that.
 | Aircraft name overrides | Rename aircraft: `ICAO_TYPE=NAME` or `REGISTRATION=NAME`, one per line |
 | Airline color tiles | Put the airline's color in the first and last tile of the flight number row |
 | Airline color overrides | `AIRLINE=COLOR`, one per line, keyed by ICAO (`UAL`) or IATA (`UA`) code. Colors: `RED`, `ORANGE`, `YELLOW`, `GREEN`, `BLUE`, `VIOLET`, `WHITE`, `BLACK`, or `NONE` |
+
+### Do not disturb
+
+Turn on **Do not disturb** (top bar button, or the section at the top of the
+settings) to stop all flight lookups. While it's on, the app makes no OpenSky or
+FlightAware requests and the board shows either:
+
+- **Time, date & weather**, using the settings in the *Time, date & weather* section, or
+- **A custom message**, one line per row (`{63}`–`{70}` for color tiles).
+
+Turn it off and tracking resumes straight away. To stop the board updating
+altogether, use **Pause** instead.
 
 ### Even centering
 

@@ -81,6 +81,8 @@ function updateModeFields() {
   $$("[data-mode]").forEach((el) => (el.hidden = el.dataset.mode !== mode));
   const idle = $("[name=idle_action]").value;
   $$("[data-idle]").forEach((el) => (el.hidden = !el.dataset.idle.split(" ").includes(idle)));
+  const dnd = $("[name=dnd_display]").value;
+  $$("[data-dnd]").forEach((el) => (el.hidden = el.dataset.dnd !== dnd));
 }
 
 async function saveSettings(changes) {
@@ -108,6 +110,7 @@ $("#settings-form").addEventListener("submit", async (ev) => {
 
 $("[name=vestaboard_mode]").addEventListener("change", updateModeFields);
 $("[name=idle_action]").addEventListener("change", updateModeFields);
+$("[name=dnd_display]").addEventListener("change", updateModeFields);
 $("[name=board_model]").addEventListener("change", renderManualInputs);
 
 $$("[data-test]").forEach((btn) =>
@@ -286,7 +289,7 @@ function renderCurrent(status) {
     return;
   }
   if (!f) {
-    el.innerHTML = `<p class="muted">${status.nearby.length ? "" : "No flights in range right now."}</p>`;
+    el.innerHTML = `<p class="muted">${status.dnd ? "Do not disturb is on, so flight lookups are stopped." : status.nearby.length ? "" : "No flights in range right now."}</p>`;
     return;
   }
   const unit = status.location.unit;
@@ -303,7 +306,7 @@ function renderNearby(status) {
   const unit = status.location.unit;
   $("#nearby-count").textContent = `${status.nearby.length} in range`;
   if (!status.nearby.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">${status.status === "needs location" ? "Set a location below to start tracking." : "No aircraft in range."}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">${status.dnd ? "Do not disturb is on." : status.status === "needs location" ? "Set a location below to start tracking." : "No aircraft in range."}</td></tr>`;
     return;
   }
   tbody.innerHTML = status.nearby
@@ -335,8 +338,9 @@ function renderStatus(status) {
   lastStatus = status;
   const pill = $("#status-pill");
   pill.textContent = status.status;
-  pill.className = "pill " + ({ tracking: "ok", paused: "warn", "needs location": "warn" }[status.status] || (status.status.includes("error") ? "err" : ""));
+  pill.className = "pill " + ({ tracking: "ok", paused: "warn", "needs location": "warn", "do not disturb": "warn" }[status.status] || (status.status.includes("error") ? "err" : ""));
   $("#btn-toggle").textContent = status.enabled ? "Pause" : "Resume";
+  $("#btn-dnd").textContent = status.dnd ? "End do not disturb" : "Do not disturb";
 
   const labels = { opensky: "OpenSky", flightaware: "FlightAware", vestaboard: "Vestaboard", weather: "Weather" };
   $("#errors").innerHTML =
@@ -370,6 +374,12 @@ $("#btn-refresh").addEventListener("click", async () => {
   await api("/api/refresh", { method: "POST" });
   toast("Refreshing…");
   setTimeout(refreshStatus, 2500);
+});
+
+$("#btn-dnd").addEventListener("click", async () => {
+  const dnd = !(lastStatus && lastStatus.dnd);
+  await saveSettings({ dnd_enabled: dnd });
+  toast(dnd ? "Do not disturb is on: flight lookups stopped" : "Do not disturb is off");
 });
 
 $("#btn-toggle").addEventListener("click", async () => {

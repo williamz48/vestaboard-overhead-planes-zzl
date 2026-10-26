@@ -43,6 +43,11 @@ ENV_SEEDS = {
 class Settings(BaseModel):
     enabled: bool = True
 
+    # Do not disturb: no flight lookups; show the clock or a message instead
+    dnd_enabled: bool = False
+    dnd_display: Literal["clock", "message"] = "clock"
+    dnd_message: str = "DO NOT DISTURB"
+
     # Location
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -77,6 +82,7 @@ class Settings(BaseModel):
     idle_message: str = "CLEAR SKIES"
     idle_delay_seconds: int = Field(default=0, ge=0, le=3600)  # keep the last flight up this long
     time_format: Literal["12h", "24h"] = "12h"
+    weather_refresh_minutes: int = Field(default=15, ge=5, le=240)
     temperature_unit: Literal["F", "C", "both"] = "F"
     clock_show_weather: bool = True
     airlines_only: bool = False  # skip private/GA aircraft (callsign isn't an airline flight)

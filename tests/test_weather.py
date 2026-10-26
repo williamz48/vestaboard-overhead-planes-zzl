@@ -60,3 +60,29 @@ def test_clock_lines():
     assert all(len(row) == 22 for row in grid)
     no_wx = clock_lines(now, wx(), board="note", time_format="12h", unit="F", show_weather=False)
     assert no_wx == ["3:45 PM", "MON OCT 26"]
+
+
+async def _two_lookups(max_age, age):
+    import httpx
+    import respx
+
+    from app.weather import API_URL, WeatherClient
+
+    payload = {"timezone": "UTC", "utc_offset_seconds": 0,
+               "current": {"temperature_2m": 10, "weather_code": 0}, "daily": {}}
+    with respx.mock:
+        route = respx.get(API_URL).mock(return_value=httpx.Response(200, json=payload))
+        async with httpx.AsyncClient() as http:
+            client = WeatherClient(http)
+            await client.get(1.0, 2.0, max_age=max_age)
+            key, fetched, cached = client._cache
+            client._cache = (key, fetched - age, cached)  # pretend the lookup was `age` seconds ago
+            await client.get(1.0, 2.0, max_age=max_age)
+        return route.call_count
+
+
+def test_weather_refresh_interval():
+    import asyncio
+
+    assert asyncio.run(_two_lookups(max_age=30 * 60, age=20 * 60)) == 1  # still fresh
+    assert asyncio.run(_two_lookups(max_age=10 * 60, age=20 * 60)) == 2  # refreshed
