@@ -11,6 +11,8 @@ number/registration from the dashboard.
 
 from __future__ import annotations
 
+import re
+
 TYPE_NAMES: dict[str, str] = {
     # --- Airbus narrowbody ---
     "A318": "A318-100",
@@ -259,6 +261,65 @@ TYPE_NAMES: dict[str, str] = {
 }
 
 
+# Manufacturer for each type, used for the long form ("AIRBUS A350-900") when it
+# fits on the board. Types whose short name already includes the maker (ATR,
+# SAAB, BELL, LEARJET, ...) or whose maker name is too long to ever fit
+# (McDonnell Douglas) are left out.
+_MAKERS: dict[str, tuple[str, ...]] = {
+    "AIRBUS": (
+        "A318", "A319", "A320", "A321", "A19N", "A20N", "A21N", "BCS1", "BCS3",
+        "A306", "A30B", "A310", "A332", "A333", "A337", "A338", "A339", "A342",
+        "A343", "A345", "A346", "A359", "A35K", "A388", "A3ST", "A400",
+    ),
+    "BOEING": (
+        "B712", "B721", "B722", "B732", "B733", "B734", "B735", "B736", "B737",
+        "B738", "B739", "B37M", "B38M", "B39M", "B3XM", "B752", "B753", "B742",
+        "B743", "B744", "B748", "B74S", "B762", "B763", "B764", "B772", "B77L",
+        "B773", "B77W", "B778", "B779", "B788", "B789", "B78X", "C17", "K35R",
+        "KC46", "P8", "E3TF", "B52", "F18S",
+    ),
+    "EMBRAER": (
+        "E135", "E145", "E45X", "E170", "E75L", "E75S", "E190", "E195", "E290",
+        "E295", "E35L", "E50P", "E55P", "E545", "E550",
+    ),
+    "BOMBARDIER": (
+        "CRJ1", "CRJ2", "CRJ7", "CRJ9", "CRJX", "CL30", "CL35", "CL60", "GLEX",
+        "GL5T", "GL7T",
+    ),
+    "DE HAVILLAND": ("DH8A", "DH8B", "DH8C", "DH8D", "DHC6", "DHC7"),
+    "BEECHCRAFT": ("B190", "BE20", "BE30", "BE35", "BE36", "BE58", "BE9L", "B350"),
+    "CESSNA": (
+        "C25A", "C25B", "C25C", "C25M", "C510", "C525", "C550", "C560", "C56X",
+        "C650", "C680", "C68A", "C700", "C750", "C150", "C152", "C172", "C182",
+        "C206", "C208", "C210", "C310", "C337",
+    ),
+    "GULFSTREAM": ("GLF4", "GLF5", "GLF6", "G150", "G280", "GA5C", "GA6C", "GA7C", "GA8C"),
+    "DASSAULT": ("F2TH", "F900", "FA7X", "FA8X", "FA6X", "FA50"),
+    "BAE": ("JS41",),
+    "DORNIER": ("D328", "J328"),
+    "SUKHOI": ("SU95",),
+    "COMAC": ("C919", "AJ27"),
+    "PILATUS": ("PC12", "PC24"),
+    "CIRRUS": ("SR20", "SR22", "SF50"),
+    "DAHER": ("TBM7", "TBM8", "TBM9"),
+    "PIPER": ("P28A", "P28R", "P32R", "PA34", "PA44", "PA46"),
+    "DIAMOND": ("DA40", "DA42", "DA62"),
+    "MOONEY": ("M20P", "M20T"),
+    "LOCKHEED": ("C130", "C30J", "C5M", "F16", "F35"),
+    "ANTONOV": ("A124",),
+    "ILYUSHIN": ("IL76",),
+    "LEONARDO": ("A109", "A119", "A139", "A169"),
+    "EUROCOPTER": ("AS50", "AS55", "AS65", "EC20", "EC30", "EC35", "EC45", "EC55", "EC75"),
+    "SIKORSKY": ("H60", "S76", "S92"),
+    "ROBINSON": ("R22", "R44", "R66"),
+}
+MANUFACTURERS: dict[str, str] = {code: maker for maker, codes in _MAKERS.items() for code in codes}
+
+# Makers whose short names carry a one-letter prefix that reads oddly after the
+# maker name: "B737-800" -> "BOEING 737-800", "C172" -> "CESSNA 172".
+_MAKER_PREFIX = {"BOEING": "B", "BEECHCRAFT": "B", "CESSNA": "C"}
+
+
 def parse_overrides(text: str) -> dict[str, str]:
     """Parse ``KEY=NAME`` lines (blank lines and ``#`` comments ignored)."""
     overrides: dict[str, str] = {}
@@ -291,3 +352,18 @@ def short_name(
     if not code:
         return ""
     return overrides.get(code) or TYPE_NAMES.get(code) or code
+
+
+def long_name(icao_type: str | None, short: str) -> str:
+    """The model with its manufacturer ("AIRBUS A350-900"), or "" if unknown.
+
+    ``short`` is the result of :func:`short_name`, so overrides are respected.
+    """
+    maker = MANUFACTURERS.get((icao_type or "").strip().upper())
+    if not maker or not short:
+        return ""
+    if short.upper().startswith(maker.split()[0]):
+        return short
+    prefix = _MAKER_PREFIX.get(maker)
+    model = short[1:] if prefix and re.match(rf"{prefix}\d", short) else short
+    return f"{maker} {model}"

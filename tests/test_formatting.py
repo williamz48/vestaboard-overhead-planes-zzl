@@ -106,3 +106,33 @@ def test_board_lines_with_color():
     f = _flight(flight="UA123", origin="SFO", destination="JFK", aircraft="B737-8 MAX", color=67)
     assert board_lines(f, 15)[0] == "{67}    UA123    {67}"
     assert board_lines(f, 15, colors=False)[0] == "UA123"
+
+
+def test_long_names():
+    long = lambda code: aircraft.long_name(code, aircraft.short_name(code))  # noqa: E731
+    assert long("A359") == "AIRBUS A350-900"
+    assert long("B789") == "BOEING 787-9"
+    assert long("B38M") == "BOEING 737-8 MAX"
+    assert long("E75L") == "EMBRAER E175"
+    assert long("DH8D") == "DE HAVILLAND DHC-8-400"
+    assert long("C172") == "CESSNA 172"
+    assert long("B190") == "BEECHCRAFT 1900D"
+    assert long("AT76") == ""  # "ATR72-600" already names the maker
+    assert long("ZZZZ") == ""
+    # overrides keep the maker from the type code
+    assert aircraft.long_name("A21N", "A321XLR") == "AIRBUS A321XLR"
+    for code in aircraft.MANUFACTURERS:
+        name = long(code)
+        assert len(vestaboard.encode_text(name)) == len(name)
+        assert all(c != 0 or ch == " " for c, ch in zip(vestaboard.encode_text(name), name)), name
+
+
+def test_board_lines_manufacturer_when_it_fits():
+    fits = _flight(aircraft="A350-900", aircraft_long="AIRBUS A350-900")
+    assert board_lines(fits, 15)[2] == "AIRBUS A350-900"
+    assert board_lines(fits, 15, manufacturer=False)[2] == "A350-900"
+    too_long = _flight(aircraft="B737-8 MAX", aircraft_long="BOEING 737-8 MAX")
+    assert board_lines(too_long, 15)[2] == "B737-8 MAX"
+    assert board_lines(too_long, 22)[2] == "BOEING 737-8 MAX"  # Flagship has room
+    unknown_maker = _flight(aircraft="ATR72-600")
+    assert board_lines(unknown_maker, 15)[2] == "ATR72-600"

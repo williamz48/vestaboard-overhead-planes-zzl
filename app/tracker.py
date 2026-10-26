@@ -39,6 +39,7 @@ class TrackedFlight:
     origin_name: str | None = None
     destination_name: str | None = None
     aircraft: str = ""
+    aircraft_long: str = ""
     aircraft_type: str | None = None
     registration: str | None = None
     airline: str | None = None
@@ -85,6 +86,7 @@ def apply_enrichment(
         flight.registration = info.registration
         flight.airline = info.operator
     flight.aircraft = aircraft.short_name(flight.aircraft_type, flight.registration, overrides)
+    flight.aircraft_long = aircraft.long_name(flight.aircraft_type, flight.aircraft)
     flight.color = airlines.airline_color(flight.callsign, flight.flight, color_overrides)
 
 
@@ -119,12 +121,21 @@ def route_line(origin: str | None, destination: str | None, width: int) -> str:
 
 
 def board_lines(
-    flight: TrackedFlight, width: int, colors: bool = True, align: str = "center"
+    flight: TrackedFlight,
+    width: int,
+    colors: bool = True,
+    align: str = "center",
+    manufacturer: bool = True,
 ) -> list[str]:
     """Line 1: flight number, line 2: ORIGIN - DESTINATION, line 3: aircraft model.
 
     With ``colors``, the flight number row gets the airline's color at both ends.
+    With ``manufacturer``, the model includes its maker ("AIRBUS A350-900") when
+    that fits on the row; otherwise the compact form ("A350-1000") is used.
     """
+    model = flight.aircraft
+    if manufacturer and flight.aircraft_long and len(flight.aircraft_long) <= width:
+        model = flight.aircraft_long
     number = flight.flight or flight.callsign
     first = (
         vestaboard.with_edge_tiles(number, flight.color, width, align)
@@ -134,7 +145,7 @@ def board_lines(
     return [
         first,
         route_line(flight.origin, flight.destination, width),
-        vestaboard.fit(flight.aircraft, width),
+        vestaboard.fit(model, width),
     ]
 
 
@@ -320,7 +331,7 @@ class Tracker:
                 aircraft.parse_overrides(s.airline_color_overrides),
             )
 
-        lines = board_lines(target, cols, s.airline_colors, s.align)
+        lines = board_lines(target, cols, s.airline_colors, s.align, s.show_manufacturer)
         await self.show(lines, s, source=target.icao24)
 
     async def show_clock(self, s: Settings) -> None:

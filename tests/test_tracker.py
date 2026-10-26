@@ -86,6 +86,8 @@ async def test_end_to_end(store):
         ]
         grid = httpx.Response(200, content=sent.content).json()
         assert grid[0][0] == grid[0][14] == 67  # United blue
+        # "BOEING 737-8 MAX" is 16 characters, one too many for a Note, so the compact name is used
+        assert tracker.state.nearby[0].aircraft_long == "BOEING 737-8 MAX"
 
         # A second step with identical data must not re-send to the board or re-query FlightAware.
         await tracker.step()
