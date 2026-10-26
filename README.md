@@ -41,6 +41,33 @@ pip install -r requirements.txt
 DATA_DIR=./data uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
+## Deploy on Railway
+
+The repo deploys to [Railway](https://railway.com) as-is from its Dockerfile.
+
+1. In Railway, choose **New Project → Deploy from GitHub repo** and pick this
+   repository. If the code isn't on your default branch yet, open the service's
+   **Settings → Source** and pick the branch.
+2. **Add a volume** to the service (right-click the service, or ⌘K → *Add Volume*)
+   with mount path **`/data`**. This is where your settings are saved; without it,
+   every redeploy wipes them.
+3. Under **Variables**, add `DASHBOARD_PASSWORD` (and optionally
+   `DASHBOARD_USERNAME`, which defaults to `admin`). Railway URLs are public, so
+   don't skip this. Don't set `PORT`; Railway provides it.
+4. Under **Settings → Networking**, click **Generate Domain**, then open the URL
+   and fill in your settings as usual.
+5. Optional: under **Settings → Deploy**, set the healthcheck path to `/healthz`.
+
+Railway notes:
+
+- Use the Vestaboard **Cloud API**. The Local API can't work from Railway,
+  because Railway can't reach a board on your home network.
+- Keep the service at **one replica**. Each replica would run its own tracker and
+  send duplicate board updates.
+- Railway mounts volumes as root. The container fixes ownership of `/data` at
+  startup and then drops to an unprivileged user, so you don't need
+  `RAILWAY_RUN_UID`.
+
 ## Getting API keys
 
 ### OpenSky Network

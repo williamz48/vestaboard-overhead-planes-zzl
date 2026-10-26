@@ -113,7 +113,7 @@ async def put_settings(request: Request):
 
 @app.get("/api/status")
 async def status(request: Request):
-    return tracker(request).snapshot()
+    return {**tracker(request).snapshot(), "auth_enabled": bool(DASHBOARD_PASSWORD)}
 
 
 @app.post("/api/refresh")

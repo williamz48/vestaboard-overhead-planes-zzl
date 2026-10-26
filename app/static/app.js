@@ -315,6 +315,15 @@ function renderNearby(status) {
     .join("");
 }
 
+function isPrivateHost(host) {
+  return (
+    host === "localhost" ||
+    host.endsWith(".local") ||
+    !host.includes(".") ||
+    /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$)/.test(host)
+  );
+}
+
 function renderStatus(status) {
   lastStatus = status;
   const pill = $("#status-pill");
@@ -323,10 +332,14 @@ function renderStatus(status) {
   $("#btn-toggle").textContent = status.enabled ? "Pause" : "Resume";
 
   const labels = { opensky: "OpenSky", flightaware: "FlightAware", vestaboard: "Vestaboard" };
-  $("#errors").innerHTML = Object.entries(status.errors)
-    .filter(([, msg]) => msg)
-    .map(([k, msg]) => `<div class="error"><b>${labels[k]}:</b> ${esc(msg)}</div>`)
-    .join("");
+  $("#errors").innerHTML =
+    (!status.auth_enabled && !isPrivateHost(location.hostname)
+      ? '<div class="error"><b>Dashboard is public:</b> anyone with this URL can change your settings. Set the DASHBOARD_PASSWORD environment variable.</div>'
+      : "") +
+    Object.entries(status.errors)
+      .filter(([, msg]) => msg)
+      .map(([k, msg]) => `<div class="error"><b>${labels[k]}:</b> ${esc(msg)}</div>`)
+      .join("");
 
   const credits = status.opensky_credits_remaining != null ? ` · ${status.opensky_credits_remaining} OpenSky credits left` : "";
   $("#poll-meta").textContent = `Polled ${ago(status.last_poll)}${credits} · ${status.flightaware_requests} FlightAware lookups`;
