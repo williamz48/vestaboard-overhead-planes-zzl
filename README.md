@@ -178,14 +178,38 @@ the airline's color (`█`):
 Vestaboard has eight tile colors, so each airline gets the closest match to its
 brand color (United → blue, Delta → red, Cathay Pacific → green, Air China → red,
 China Eastern → blue, Spirit → yellow, …). The table is `AIRLINE_COLORS` in
-`app/airlines.py`. Airlines not in it, and regional carriers that fly for several
-brands (SkyWest, Republic), get no tiles. Add an override for those, or to change
+`app/airlines.py`. Regional flights take their mainline's color (see below).
+Airlines not in the table get no tiles. Add an override for those, or to change
 a color you disagree with:
 
 ```
 SKW=BLUE
 AAL=RED
 ```
+
+### Regional airlines
+
+Regional airlines and brands that fly under a mainline airline's flight numbers
+are shown as that airline, with its code and color:
+
+| Callsign | Operator | Board |
+|---|---|---|
+| `QLK1567` | QantasLink | `QF1567` |
+| `ENY3456` | Envoy (American Eagle) | `AA3456` |
+| `EDV5034` | Endeavor (Delta Connection) | `DL5034` |
+| `JZA8123` | Jazz (Air Canada Express) | `AC8123` |
+| `KLC1234` | KLM Cityhopper | `KL1234` |
+
+The full list is `REGIONAL_MAINLINE` in `app/airlines.py`. It covers the
+regionals of American, Delta, United, Alaska, Air Canada, WestJet, Aeromexico,
+LATAM, Avianca, Copa, British Airways, Lufthansa, KLM, Air France, Iberia, SAS,
+Qantas, Air New Zealand, JAL, ANA and Air China.
+
+When FlightAware lists the mainline flight number (as the flight's own number or
+as a codeshare), that number is used. Carriers that fly for several airlines
+(SkyWest, Republic, Air Wisconsin) are shown as the airline FlightAware's
+codeshares name. If FlightAware doesn't say, they keep their own code
+(e.g. `OO5432`).
 
 ### Aircraft names
 

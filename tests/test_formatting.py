@@ -136,3 +136,34 @@ def test_board_lines_manufacturer_when_it_fits():
     assert board_lines(too_long, 22)[2] == "BOEING 737-8 MAX"  # Flagship has room
     unknown_maker = _flight(aircraft="ATR72-600")
     assert board_lines(unknown_maker, 15)[2] == "ATR72-600"
+
+
+def test_regionals_merge_into_mainline():
+    for regional, mainlines in airlines.REGIONAL_MAINLINE.items():
+        assert all(m in airlines.ICAO_TO_IATA for m in mainlines), regional
+    # Single-brand regionals always show as the mainline
+    assert airlines.iata_flight_number("QLK1567") == "QF1567"
+    assert airlines.iata_flight_number("ENY3456") == "AA3456"
+    assert airlines.iata_flight_number("EDV5034") == "DL5034"
+    assert airlines.iata_flight_number("JZA8123") == "AC8123"
+    assert airlines.iata_flight_number("KLC1234") == "KL1234"
+    # FlightAware's number wins when it names the mainline, or is re-prefixed when it doesn't
+    assert airlines.iata_flight_number("QLK117D", "QF2117") == "QF2117"
+    assert airlines.iata_flight_number("ENY3456", "MQ3456") == "AA3456"
+    assert airlines.iata_flight_number("QLK117D", None, ["QF2117"]) == "QF2117"
+    # Multi-brand regionals need FlightAware to say which mainline they fly for
+    assert airlines.iata_flight_number("SKW5432") == "OO5432"
+    assert airlines.iata_flight_number("SKW5432", "OO5432") == "OO5432"
+    assert airlines.iata_flight_number("SKW5432", "OO5432", ["AC5555", "UA5432"]) == "UA5432"
+    assert airlines.iata_flight_number("SKW3901", "DL3901") == "DL3901"
+    # Mainline and unknown airlines are unaffected
+    assert airlines.iata_flight_number("BAW12A", "BA112") == "BA112"
+    assert airlines.iata_flight_number("XYZ123") == "XYZ123"
+
+
+def test_regionals_take_mainline_color():
+    assert airlines.airline_color("QLK1567", "QF1567") == 63  # Qantas red
+    assert airlines.airline_color("ENY3456", "AA3456") == 67  # American blue
+    assert airlines.airline_color("SKW3901", "DL3901") == 63  # Delta red
+    assert airlines.airline_color("SKW5432", "OO5432") is None  # brand unknown
+    assert airlines.airline_color("QLK1567", "QF1567", aircraft.parse_overrides("QLK=GREEN")) == 66

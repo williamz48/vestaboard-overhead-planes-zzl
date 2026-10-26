@@ -76,8 +76,9 @@ def apply_enrichment(
 ) -> None:
     if info is not None:
         flight.enriched = True
-        if info.ident_iata:
-            flight.flight = info.ident_iata.upper()
+        flight.flight = airlines.iata_flight_number(
+            flight.callsign, info.ident_iata, info.codeshares_iata
+        )
         flight.origin = info.origin
         flight.destination = info.destination
         flight.origin_name = info.origin_name

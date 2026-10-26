@@ -55,6 +55,7 @@ async def test_lookup_is_cached():
         again = await client.lookup("UAL123", "key")
     assert info.ident_iata == "UA123" and info.origin == "SFO" and info.destination == "JFK"
     assert again is info
+    assert info.codeshares_iata == []
     assert route.call_count == 1
     assert route.calls[0].request.headers["x-apikey"] == "key"
 
