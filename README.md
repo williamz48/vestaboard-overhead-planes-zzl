@@ -167,7 +167,7 @@ location and the current weather from Open-Meteo, updating every minute:
 ```
     3:45 PM                     15:45
    MON OCT 26             MONDAY OCTOBER 26
- 22C 72F RAIN               6°C 43°F CLEAR
+ 22C/72F  RAIN              6°C 43°F CLEAR
                          H 20°C/69°F L 5°C/41°F
   (Note, both units)      (Flagship, 24-hour, both units)
 ```

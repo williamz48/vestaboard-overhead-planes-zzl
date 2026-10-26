@@ -114,6 +114,8 @@ def format_temp(celsius: float, unit: str, degree: bool) -> str:
 
 def weather_line(weather: Weather, unit: str, width: int, degree: bool) -> str:
     temps = format_temp(weather.temperature_c, unit, degree)
+    if not degree:
+        temps = temps.replace(" ", "/")  # Note: "22C/72F" reads as one reading, not two
     condition = weather.condition
     for word in (condition, SHORTER.get(condition, condition)):
         line = f"{temps} {word}".strip()

@@ -35,11 +35,11 @@ def test_temperatures():
 
 def test_weather_line_fits_a_note():
     assert weather_line(wx(code=0), "F", 15, False) == "72F CLEAR"
-    assert weather_line(wx(code=95), "both", 15, False) == "22C 72F STORM"
+    assert weather_line(wx(code=95), "both", 15, False) == "22C/72F STORM"
     assert weather_line(wx(code=45), "C", 15, False) == "22C FOG"
     # "OVERCAST" doesn't fit next to both temperatures, so a shorter word is used
-    assert weather_line(wx(code=3), "both", 15, False) == "22C 72F CLOUDY"
-    assert weather_line(wx(temp_c=-25, code=3), "both", 15, False) == "-25C -13F"[:15]
+    assert weather_line(wx(code=3), "both", 15, False) == "22C/72F CLOUDY"
+    assert weather_line(wx(temp_c=-25, code=3), "both", 15, False) == "-25C/-13F"
     for code in CONDITIONS:
         line = weather_line(wx(temp_c=-40, code=code), "both", 15, False)
         assert len(line) <= 15

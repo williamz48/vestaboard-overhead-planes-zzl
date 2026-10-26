@@ -158,7 +158,7 @@ async def test_clock_when_idle(store):
     tokyo = datetime.now(ZoneInfo("Asia/Tokyo"))
     assert lines[0] in {format_time(tokyo, "24h"), format_time(tokyo - timedelta(minutes=1), "24h")}
     assert lines[1] == balance(f"{tokyo.strftime('%a %b')} {tokyo.day}".upper(), 15)
-    assert lines[2] == "22C 71F  RAIN"  # extra space so it centers exactly on 15 tiles
+    assert lines[2] == "22C/71F  RAIN"  # extra space so it centers exactly on 15 tiles
     params = wx.calls[0].request.url.params
     assert params["latitude"] == "40.0" and params["timezone"] == "auto"
 
