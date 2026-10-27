@@ -10,7 +10,7 @@ from app.flightaware import API_URL as FA_URL, FlightAwareClient
 from app.opensky import API_URL as OS_URL, TOKEN_URL, OpenSkyClient
 from app.tracker import Tracker
 from app.vestaboard import CLOUD_URL, VestaboardClient, balance, grid_to_text
-from app.weather import API_URL as WX_URL, WeatherClient, format_time
+from app.weather import API_URL as WX_URL, WeatherClient, format_date, format_time
 
 
 def state(icao, callsign, lat, lon, alt_m=1500.0, ground=False):
@@ -157,7 +157,7 @@ async def test_clock_when_idle(store):
     lines = tracker.state.board_lines
     tokyo = datetime.now(ZoneInfo("Asia/Tokyo"))
     assert lines[0] in {format_time(tokyo, "24h"), format_time(tokyo - timedelta(minutes=1), "24h")}
-    assert lines[1] == balance(f"{tokyo.strftime('%a %b')} {tokyo.day}".upper(), 15)
+    assert lines[1] == balance(format_date(tokyo, 15), 15)
     assert lines[2] == "22C/71F  RAIN"  # extra space so it centers exactly on 15 tiles
     params = wx.calls[0].request.url.params
     assert params["latitude"] == "40.0" and params["timezone"] == "auto"
