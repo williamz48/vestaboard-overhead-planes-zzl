@@ -356,7 +356,8 @@ function renderStatus(status) {
       .join("");
 
   const credits = status.opensky_credits_remaining != null ? ` · ${status.opensky_credits_remaining} OpenSky credits left` : "";
-  $("#poll-meta").textContent = `Polled ${ago(status.last_poll)}${credits} · ${status.flightaware_requests} FlightAware lookups`;
+  const saved = status.flightaware_saved ? `, ${status.flightaware_saved} saved by cache` : "";
+  $("#poll-meta").textContent = `Polled ${ago(status.last_poll)}${credits} · ${status.flightaware_requests} FlightAware calls${saved}`;
 
   renderBoard(status.board);
   renderCurrent(status);

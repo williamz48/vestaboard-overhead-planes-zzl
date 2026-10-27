@@ -141,7 +141,9 @@
         Only the flight shown on the board is looked up, and results are cached, to keep costs down.</p>
       <div class="fields">
         <label class="span-2">API key <input type="password" name="flightaware_api_key"></label>
+        <label class="check span-2"><input type="checkbox" name="flightaware_private_aircraft"> Also look up private aircraft (tail-number callsigns like N123AB)</label>
       </div>
+      <p class="hint">Each lookup returns that flight's schedule for the next 2 days, which is saved and reused, so flights that pass by every day are usually only paid for once every couple of days.</p>
       <p class="test-result" data-result="flightaware"></p>
     </section>
 

@@ -311,3 +311,24 @@ async def test_outside_schedule_tracks_and_wakes_for_the_start(store):
 def test_dnd_times_are_validated(store):
     with pytest.raises(Exception):
         store.update({"dnd_start": "25:00"})
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_private_aircraft_lookups_can_be_skipped(store):
+    store.update({"opensky_client_id": "", "opensky_client_secret": "", "flightaware_private_aircraft": False})
+    respx.get(f"{OS_URL}/states/all").mock(return_value=httpx.Response(
+        200, json={"time": 0, "states": [state("a9", "N123AB", 40.01, -75.0)]}))
+    fa = respx.get(f"{FA_URL}/flights/N123AB").mock(return_value=httpx.Response(200, json={"flights": []}))
+    respx.post(CLOUD_URL).mock(return_value=httpx.Response(200, json={}))
+    async with httpx.AsyncClient() as http:
+        tracker = Tracker(store, OpenSkyClient(http), FlightAwareClient(http), VestaboardClient(http))
+        await tracker.step()
+        assert fa.call_count == 0
+        assert tracker.state.board_lines[0] == "N123AB"
+
+        store.update({"flightaware_private_aircraft": True})
+        tracker.settings_changed()
+        tracker.state.board_sent_at -= 60
+        await tracker.step()
+    assert fa.call_count == 1

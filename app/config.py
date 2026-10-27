@@ -68,6 +68,7 @@ class Settings(BaseModel):
 
     # FlightAware AeroAPI
     flightaware_api_key: str = ""
+    flightaware_private_aircraft: bool = True  # also look up tail-number callsigns (N123AB)
 
     # Vestaboard
     vestaboard_mode: Literal["disabled", "cloud", "rw", "local"] = "disabled"

@@ -492,9 +492,14 @@ class Tracker:
             self.state.current_icao24 = target.icao24
             self.state.current_since = time.time()
 
-        if s.flightaware_api_key and not target.enriched:
+        need_registration = s.aircraft_display != "model"
+        wanted = not target.enriched or (need_registration and not target.registration)
+        private = not airlines.is_airline_callsign(target.callsign)
+        if s.flightaware_api_key and wanted and (s.flightaware_private_aircraft or not private):
             try:
-                info = await self.flightaware.lookup(target.callsign, s.flightaware_api_key)
+                info = await self.flightaware.lookup(
+                    target.callsign, s.flightaware_api_key, need_registration
+                )
                 self.state.flightaware_error = None
             except FlightAwareError as exc:
                 info = None
@@ -602,6 +607,7 @@ class Tracker:
             },
             "opensky_credits_remaining": self.opensky.credits_remaining,
             "flightaware_requests": self.flightaware.requests_made,
+            "flightaware_saved": self.flightaware.cache_hits,
             "nearby": [f.to_dict(s.radius_unit) for f in st.nearby],
             "current_icao24": st.current_icao24,
             "idle_in": round(self.idle_delay_left(s)) if not st.nearby else 0,

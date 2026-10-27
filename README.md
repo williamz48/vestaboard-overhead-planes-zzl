@@ -95,9 +95,22 @@ until OpenSky says it can retry.
 Sign up at the [AeroAPI portal](https://www.flightaware.com/aeroapi/portal) and
 create an API key. AeroAPI bills per request, so the app:
 
-- only looks up the flight that is actually going on the board (not every plane in range);
-- caches each result until the flight is due to land (up to 6 hours);
-- caches "not found" results for 30 minutes.
+- **Only looks up the flight going on the board,** not every plane in range.
+- **Keeps the whole schedule from each lookup.** One call returns every leg flown
+  under that callsign up to 2 days ahead. When the same flight passes over again,
+  later today or on tomorrow's daily run, it comes from the cache for free.
+- **Saves the cache to disk** (`/data/flightaware_cache.json`), so restarts and
+  upgrades don't throw it away.
+- **Remembers misses and errors** for a while instead of retrying every poll.
+- **Can skip private aircraft:** untick *Also look up private aircraft* to skip
+  tail-number callsigns like `N123AB`, which often have no route anyway.
+
+The map card shows how many paid calls were made and how many were saved by the
+cache since the app started.
+
+If the aircraft row shows the registration, a cached leg that was fetched
+before the plane was assigned is looked up again once. That happens at most once
+every 30 minutes, so the tail number is filled in.
 
 Without a FlightAware key the board still shows the flight number (converted from
 the ADS-B callsign, e.g. `UAL123` → `UA123`), but no route or aircraft.
