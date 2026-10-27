@@ -180,7 +180,7 @@ that would be one tile off get an extra space at a natural break instead:
 | Route | `KSFO - JFK` | `KSFO -  JFK` (the dash stays in the middle) |
 | Manufacturer + model | `AIRBUS A321NEO` | `AIRBUS  A321NEO` |
 | Model + registration | `B787-9 N27901` | `B787-9  N27901` |
-| Date | `MON OCT 26` | `MON  OCT 26` |
+| Date | `TUESDAY OCT 27` | `TUESDAY  OCT 27` |
 
 Rows without a natural break (`A320-200`, a tail number like `N123AB`) are left
 as they are. Custom and idle messages are sent exactly as you type them.
@@ -192,7 +192,7 @@ location and the current weather from Open-Meteo, updating every minute:
 
 ```
     3:45 PM                     15:45
-  MON  OCT 26           MONDAY  OCTOBER 26
+ MONDAY OCT 26          MONDAY  OCTOBER 26
  22C/72F  RAIN              6°C 43°F CLEAR
                          H 20°C/69°F L 5°C/41°F
   (Note, both units)      (Flagship, 24-hour, both units)
@@ -200,6 +200,10 @@ location and the current weather from Open-Meteo, updating every minute:
 
 - **Time zone:** the time is local to the location you set, using the time zone
   Open-Meteo reports for it, not the server's time zone.
+- **Date:** the day of the week is spelled out when it fits (`THURSDAY OCT 29`).
+  On a Note, Wednesdays with a two-digit date don't fit (`WEDNESDAY OCT 28` is 16
+  tiles), so a 4-letter abbreviation is used: `WEDS OCT 28` (also `TUES`, `THUR`).
+  The Flagship always has room for the full day and month.
 - **Conditions:** one word each: `CLEAR`, `FAIR`, `CLOUDY`, `OVERCAST`, `FOG`,
   `DRIZZLE`, `RAIN`, `SHOWERS`, `SLEET`, `SNOW`, `STORM`. If a word doesn't fit
   next to both temperatures, a shorter synonym is used (e.g. `OVERCAST` → `CLOUDY`).

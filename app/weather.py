@@ -150,10 +150,21 @@ def format_time(now: datetime, time_format: str) -> str:
     return f"{now.hour % 12 or 12}:{now.minute:02d} {'AM' if now.hour < 12 else 'PM'}"
 
 
+# Used when the full day name doesn't fit: "WEDNESDAY OCT 28" is one tile too long for a Note.
+DAY_ABBREVIATIONS = ("MON", "TUES", "WEDS", "THUR", "FRI", "SAT", "SUN")
+
+
 def format_date(now: datetime, width: int) -> str:
-    """``MON OCT 26`` on a Note, ``MONDAY OCTOBER 26`` on a Flagship (when it fits)."""
-    long = f"{now.strftime('%A')} {now.strftime('%B')} {now.day}".upper()
-    return long if width > 15 and len(long) <= width else f"{now.strftime('%a %b')} {now.day}".upper()
+    """The longest date that fits: ``MONDAY OCTOBER 26`` on a Flagship, ``MONDAY OCT 26``
+    on a Note, or ``WEDS OCT 28`` when even the full day name doesn't fit."""
+    day, month = now.strftime("%A").upper(), now.strftime("%B").upper()
+    candidates = [
+        f"{day} {month[:3]} {now.day}",
+        f"{DAY_ABBREVIATIONS[now.weekday()]} {month[:3]} {now.day}",
+    ]
+    if width > 15:  # full month names only on boards wider than a Note
+        candidates.insert(0, f"{day} {month} {now.day}")
+    return next((c for c in candidates if len(c) <= width), candidates[-1])
 
 
 def clock_lines(

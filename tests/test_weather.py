@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app import vestaboard
 from app.weather import (
@@ -21,9 +21,18 @@ def test_time_formats():
 
 def test_dates():
     wed = datetime(2026, 10, 28)
-    assert format_date(wed, 15) == "WED OCT 28"
+    assert format_date(wed, 15) == "WEDS OCT 28"  # "WEDNESDAY OCT 28" is 16 tiles
+    assert format_date(datetime(2026, 10, 7), 15) == "WEDNESDAY OCT 7"
+    assert format_date(datetime(2026, 10, 26), 15) == "MONDAY OCT 26"
+    assert format_date(datetime(2026, 10, 29), 15) == "THURSDAY OCT 29"
+    assert format_date(datetime(2026, 10, 31), 15) == "SATURDAY OCT 31"
     assert format_date(wed, 22) == "WEDNESDAY OCTOBER 28"
     assert format_date(datetime(2026, 9, 30), 22) == "WEDNESDAY SEPTEMBER 30"
+    # every date of the year fits: full day names on a Flagship, 4-letter fallback on a Note
+    for offset in range(366):
+        d = datetime(2028, 1, 1) + timedelta(days=offset)
+        assert len(format_date(d, 15)) <= 15
+        assert format_date(d, 22).startswith(d.strftime("%A").upper())
 
 
 def test_temperatures():
@@ -48,7 +57,7 @@ def test_weather_line_fits_a_note():
 def test_clock_lines():
     now = datetime(2026, 10, 26, 15, 45)
     note = clock_lines(now, wx(code=61), board="note", time_format="12h", unit="F", show_weather=True)
-    assert note == ["3:45 PM", "MON OCT 26", "72F RAIN"]
+    assert note == ["3:45 PM", "MONDAY OCT 26", "72F RAIN"]
     assert all("°" not in line for line in note)  # code 62 is a heart on the Note
     flagship = clock_lines(now, wx(code=2, high=25, low=15), board="flagship", time_format="24h",
                            unit="both", show_weather=True)
@@ -59,7 +68,7 @@ def test_clock_lines():
     grid = vestaboard.layout(flagship, "flagship")
     assert all(len(row) == 22 for row in grid)
     no_wx = clock_lines(now, wx(), board="note", time_format="12h", unit="F", show_weather=False)
-    assert no_wx == ["3:45 PM", "MON OCT 26"]
+    assert no_wx == ["3:45 PM", "MONDAY OCT 26"]
 
 
 async def _two_lookups(max_age, age):
